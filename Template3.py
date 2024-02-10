@@ -1,7 +1,8 @@
 #
 # Starting point template for derivational search function
 # for asymmetric binary-branching bare phrase structure
-# with some more advanced features
+# with some advanced features such as head chains and
+# standard EPP-induced A-chain
 #
 
 import itertools
@@ -10,13 +11,20 @@ import itertools
 lexicon = {'the': {'D'},
            'dog': {'N'},
            'man': {'N'},
-           'T': {'T', '!COMP:V', '#X', 'EPP'},
-           'bite': {'V', '!COMP:D', '!SPEC:D'}}
+           'T': {'T', '#X', 'EPP'},
+           'C': {'C'},
+           'v': {'v', '#X'},
+           'bite': {'V', '!COMP:D'}}
 
-lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:D'},
-                            'N': {'-COMP:V', '-COMP:D'}}
+lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
+                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V'},
+                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:D', '-SPEC:C', '-SPEC:N'},
+                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N'},
+                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'}
+                            }
 
-major_lexical_categories = {'N', 'V', 'A', 'D', 'Adv', 'T'}
+major_lexical_categories = {'C', 'N', 'V', 'A', 'D', 'Adv', 'T', 'v'}
 
 # Stores and maintains the lexicon
 class Lexicon:
@@ -77,28 +85,32 @@ class PhraseStructure:
 
     # Preconditions for Merge
     def MergePreconditions(X, Y):
-        return not X.zero_level() or X.complement_subcategorization(Y)
+        if X.zero_level():
+            return X.complement_subcategorization(Y)
+        else:
+            return Y.head().specifier_subcategorization(X)
 
     # Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
-    # Wrapper function for Merge
+    # Merge with head and phrasal repair functions
     def Merge_(X, Y):
         return X.HeadRepair(Y).Merge(Y).PhrasalRepair()
 
-    # Repairs properties of X, in needed, before Merge
+    # Head repair for X before Merge
     def HeadRepair(X, Y):
         if X.zero_level() and X.bound_morpheme() and not Y.head().silent:
             PhraseStructure.logging.write(f'\tHead Chain ({X}, {Y.head()})\n')
             X = Y.head().chaincopy().HeadMerge_(X)
         return X
 
+    # Phrasal repair for X before Merge
     def PhrasalRepair(X):
         H = X.head()
         if H.EPP() and H.complement() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
             PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
-            X = H.complement().head().specifier().chaincopy().Merge(X)
+            X = H.complement().head().specifier().chaincopy().Merge(X)  #   Phrasal copying
             PhraseStructure.logging.write(f' = {X}\n')
         return X
 
@@ -134,29 +146,38 @@ class PhraseStructure:
         else:
             return X.const[1].head()          #   [XP YP]: return the head of YP
 
-    # Verifies (recursively) that all zero-level categories of X satisfies all subcategorization
-    # features
+    # Verifies (recursively) that the configuration satisfies complement and
+    # specifier subcategorization
     def subcategorization(X):
         if X.zero_level():
             return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization()
         else:
             return X.const[0].subcategorization() and X.const[1].subcategorization()
 
+    # Complement subcategorization under [X Y]
     def complement_subcategorization(X, Y):
-        comps = {f.split(':')[1] for f in X.features if f.startswith('!COMP')}  # Subcat features
-        noncomps = {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
+        comps = {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
         if comps and not (Y and Y.head().features & comps):
             return False
+        noncomps = {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
         if noncomps and (Y and Y.head().features & noncomps):
             return False
         return True
 
-    def specifier_subcategorization(X):
+    # Specifier subcategorization under [_YP XP YP]
+    def specifier_subcategorization(X, Y=None):
+        if not Y:
+            Y = X.specifier()
         specs = {f.split(':')[1] for f in X.features if f.startswith('!SPEC')}
+        if specs and not (Y and Y.head().features & specs):
+            return False
         nonspecs = {f.split(':')[1] for f in X.features if f.startswith('-SPEC')}
-        return not ((specs and not (X.specifier() and X.specifier().head().features & specs)) or
-                    (nonspecs and (X.specifier() and X.specifier().head().features & nonspecs)))
+        if nonspecs and (Y and Y.head().features & nonspecs):
+            return False
+        return True
 
+    # Definition for the notion of specifier based on
+    # head algorithm
     def specifier(X):
         x = X.head()
         while x.mother and x.mother.head() == X.head():
@@ -177,6 +198,7 @@ class PhraseStructure:
                 linearized_output_str += X.const[1].linearize()      # Recursion to right
         return linearized_output_str
 
+    # Spellout algorithm for words
     def linearize_word(X, word_str):
         if X.terminal():
             if word_str:
@@ -187,9 +209,11 @@ class PhraseStructure:
             word_str = X.const[1].linearize_word(word_str)
         return word_str
 
+    # Definition for bound morpheme
     def bound_morpheme(X):
         return '#X' in X.features
 
+    # Definition for EPP
     def EPP(X):
         return 'EPP' in X.features
 
@@ -252,11 +276,12 @@ class SpeakerModel:
             for Preconditions, OP, name in self.external_syntactic_operations:
                 for X, Y in itertools.permutations(sWM, 2):
                     if Preconditions(X, Y):
-                        Z = OP(X.copy(), Y.copy())                          #   Create new phrase structure object by applying an operation
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z} #   Populate syntactic working memory
-                        self.consume_resource(name, [X, Y], Z, new_sWM)     #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)          #   Continue derivation
+                        Z = OP(X.copy(), Y.copy())                              #   Create new phrase structure object by applying an operation
+                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}     #   Populate syntactic working memory
+                        self.consume_resource(name, [X, Y], Z, new_sWM)         #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)              #   Continue derivation
 
+    # Resource recording
     def consume_resource(self, name, lst, result, sWM):
         self.n_steps += 1
         self.log_file.write(f'\t{name}({self.print_constituent_lst(lst)}) = {result}\n')
@@ -308,7 +333,8 @@ class LanguageData:
         log_file.write(f'Predicted outcome: {self.dataset}\n\n\n')
         return log_file
 
-    def evaluate_experiment(self, output_from_simulation):
+    def evaluate_experiment(self, output_from_simulation, n_steps):
+        print(f'Derivational steps: {n_steps}\n')
         overgeneralization = output_from_simulation - self.dataset
         undergeneralization = self.dataset - output_from_simulation
         total_errors = len(overgeneralization) + len(undergeneralization)
@@ -318,9 +344,9 @@ class LanguageData:
             print(f'Should generate: {undergeneralization}')
 
 
-ld = LanguageData()                     #   Process the dataset
-ld.read_dataset('dataset2.txt')         #   Read the dataset'
-sm = SpeakerModel()                     #   Create a speaker model
-sm.log_file = ld.start_logging()        #   Begins logging
-sm.derive(ld.numeration)                #   Create derivation from the numeration
-ld.evaluate_experiment(sm.output_data)  #   Evaluate results
+ld = LanguageData()                                 #   Process the dataset
+ld.read_dataset('dataset2.txt')                     #   Read the dataset'
+sm = SpeakerModel()                                 #   Create a speaker model
+sm.log_file = ld.start_logging()                    #   Begins logging
+sm.derive(ld.numeration)                            #   Create derivation from the numeration
+ld.evaluate_experiment(sm.output_data, sm.n_steps)  #   Evaluate results

@@ -2,10 +2,10 @@
 # Example dataset for Template2
 #
 # Numeration
-the;man;bite;T;the;dog
+C;T;the;man;v;bite;the;dog
 
 # Target sentences
-the man bite#T the dog
-the dog bite#T the man
+C the man bite#v#T the dog
+C the dog bite#v#T the man
 
  
