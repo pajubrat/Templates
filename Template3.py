@@ -10,7 +10,7 @@ import itertools
 lexicon = {'the': {'D'},
            'dog': {'N'},
            'man': {'N'},
-           'T': {'T', '!COMP:V', '#X'},
+           'T': {'T', '!COMP:V', '#X', 'EPP'},
            'bite': {'V', '!COMP:D', '!SPEC:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:D'},
@@ -37,10 +37,11 @@ class Lexicon:
 
 # Asymmetric binary-branching phrase structure formalism
 class PhraseStructure:
+    logging = None
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       # Left and right daughter constituents
         self.phon = ''            # Name
-        self.features = None      # Lexical features
+        self.features = set()      # Lexical features
         self.zero = False         # Zero-level categories
         self.silent = False       # Phonological silencing
         self.mother = None        # Mother nodes
@@ -70,31 +71,43 @@ class PhraseStructure:
     def zero_level(X):
         return X.zero or X.terminal()
 
+    # Terminal elements do not have two daughter constituents
     def terminal(X):
         return not X.const[0] or not X.const[1]
+
+    # Preconditions for Merge
+    def MergePreconditions(X, Y):
+        return not X.zero_level() or X.complement_subcategorization(Y)
 
     # Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
-    def MergePreconditions(X, Y):
-        return not X.zero_level() or X.complement_subcategorization(Y)
-
     # Wrapper function for Merge
     def Merge_(X, Y):
-        return X.HeadRepair(Y).Merge(Y)
+        return X.HeadRepair(Y).Merge(Y).PhrasalRepair()
 
+    # Repairs properties of X, in needed, before Merge
     def HeadRepair(X, Y):
         if X.zero_level() and X.bound_morpheme() and not Y.head().silent:
-            return Y.head().chaincopy().HeadMerge_(X)
+            PhraseStructure.logging.write(f'\tHead Chain ({X}, {Y.head()})\n')
+            X = Y.head().chaincopy().HeadMerge_(X)
         return X
 
+    def PhrasalRepair(X):
+        H = X.head()
+        if H.EPP() and H.complement() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
+            PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
+            X = H.complement().head().specifier().chaincopy().Merge(X)
+            PhraseStructure.logging.write(f' = {X}\n')
+        return X
+
+    # Head Merge creates a zero-level category and implements feature inheritance
     def HeadMerge_(X, Y):
-        if X.zero_level() and Y.zero_level() and Y.bound_morpheme():
-            Z = X.Merge(Y)
-            Z.zero = True
-            Z.features = Y.features
-            return Z
+        Z = X.Merge(Y)
+        Z.zero = True
+        Z.features = Y.features
+        return Z
 
     # Determines whether X has a sister constituent and returns that constituent if present
     def sister(X):
@@ -102,7 +115,7 @@ class PhraseStructure:
             return next((const for const in X.mother.const if const != X), None)
 
     # Determines whether X has a right sister and return that constituent if present
-    def right_sister(X):
+    def complement(X):
         if X.sister() and X.mother.const[0] == X:
             return X.sister()
 
@@ -119,13 +132,13 @@ class PhraseStructure:
         elif X.const[1].zero_level():         #   [XP Y0]: Y0 is the head
             return X.const[1]
         else:
-            return X.const[1].head()    #   [XP YP]: return the head of YP
+            return X.const[1].head()          #   [XP YP]: return the head of YP
 
     # Verifies (recursively) that all zero-level categories of X satisfies all subcategorization
     # features
     def subcategorization(X):
         if X.zero_level():
-            return X.complement_subcategorization(X.right_sister()) and X.specifier_subcategorization()
+            return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization()
         else:
             return X.const[0].subcategorization() and X.const[1].subcategorization()
 
@@ -145,21 +158,23 @@ class PhraseStructure:
                     (nonspecs and (X.specifier() and X.specifier().head().features & nonspecs)))
 
     def specifier(X):
-        node = X.head()
-        while node.mother and node.mother.head() == X.head():
-            if node.mother.left_sister():
-                return node.mother.left_sister()
-            node = node.mother
+        x = X.head()
+        while x.mother and x.mother.head() == X.head():
+            if x.mother.left_sister() and not x.mother.left_sister().zero_level():
+                return x.mother.left_sister()
+            x = x.mother
 
     # Maps phrase structure objects into linear lists of words
+    # This function should contain all postsyntactic computations
+    # involved in the implementation of the PF-spellout mapping
     def linearize(X):
-        linearized_output_str = ''                               #   Holds the list
-        if X.zero_level():
-            if not X.silent:
+        linearized_output_str = ''
+        if not X.silent:
+            if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
-        else:
-            linearized_output_str += X.const[0].linearize()      # Recursion to left
-            linearized_output_str += X.const[1].linearize()      # Recursion to right
+            else:
+                linearized_output_str += X.const[0].linearize()      # Recursion to left
+                linearized_output_str += X.const[1].linearize()      # Recursion to right
         return linearized_output_str
 
     def linearize_word(X, word_str):
@@ -175,11 +190,14 @@ class PhraseStructure:
     def bound_morpheme(X):
         return '#X' in X.features
 
+    def EPP(X):
+        return 'EPP' in X.features
+
     # Printout function
     def __str__(X):
         str = ''
         if X.silent:                    #   Phonologically silenced constituents are marked by __
-            return '_'
+            return '(__)'
         if X.terminal():                #   Terminal constituents are spelled out
             str = X.phon
         else:
@@ -234,15 +252,15 @@ class SpeakerModel:
             for Preconditions, OP, name in self.external_syntactic_operations:
                 for X, Y in itertools.permutations(sWM, 2):
                     if Preconditions(X, Y):
-                        Z = OP(X.copy(), Y.copy())
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}
-                        self.consume_resource(name, [X, Y], Z, new_sWM)
-                        self.derivational_search_function(new_sWM)
+                        Z = OP(X.copy(), Y.copy())                          #   Create new phrase structure object by applying an operation
+                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z} #   Populate syntactic working memory
+                        self.consume_resource(name, [X, Y], Z, new_sWM)     #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)          #   Continue derivation
 
     def consume_resource(self, name, lst, result, sWM):
         self.n_steps += 1
-        self.log_file.write(f'{self.n_steps}.\n\t{name}({self.print_constituent_lst(lst)}) = {result}\n')
-        self.log_file.write(f'\tSyntactic working memory: {self.print_constituent_lst(sWM)}\n\n')
+        self.log_file.write(f'\t{name}({self.print_constituent_lst(lst)}) = {result}\n')
+        self.log_file.write(f'\t...{self.print_constituent_lst(sWM)} ({self.n_steps})\n\n')
 
     # Processes final output
     def final_output(self, X):
@@ -285,6 +303,7 @@ class LanguageData:
     def start_logging(self):
         log_file = 'log.txt'
         log_file = open(log_file, 'w')
+        PhraseStructure.logging = log_file
         log_file.write(f'Numeration: {self.numeration}\n')
         log_file.write(f'Predicted outcome: {self.dataset}\n\n\n')
         return log_file
