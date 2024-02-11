@@ -11,9 +11,10 @@ import itertools
 lexicon = {'the': {'D'},
            'dog': {'N'},
            'man': {'N'},
-           'T': {'T', '#X', 'EPP'},
+           'T': {'T', '#X', 'EPP', '!SPEC:D'},
            'C': {'C'},
            'v': {'v', '#X'},
+           'sit': {'V', '-COMP:D'},
            'bite': {'V', '!COMP:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
@@ -266,6 +267,7 @@ class SpeakerModel:
     # Performs initialization and maps the input into numeration
     def derive(self, numeration):
         self.n_steps = 0
+        self.output_data = set()
         self.derivational_search_function([self.LexicalRetrieval(item) for item in numeration])
 
     # Derivational search function
@@ -293,9 +295,10 @@ class SpeakerModel:
         self.log_file.write(f'\t{X}')
         if X.subcategorization():  # Store only grammatical sentences
             output_sentence = f'{prefix}{X.linearize()}'
+            print(f'\tAccepted: {output_sentence} {X}')   # Print the output
             self.log_file.write(f'\n\n\t ^ ACCEPTED, OUTPUT: {output_sentence}')
             self.output_data.add(output_sentence.strip())
-            print(f'{output_sentence} {X}')   # Print the output
+
         self.log_file.write('\n\n')
 
     def print_constituent_lst(self, sWM):
@@ -311,42 +314,58 @@ class SpeakerModel:
 
 class LanguageData:
     def __init__(self):
-        self.dataset = set()        # Contains the dataset with target sentences
-        self.numeration = []        # Contains the numeration
+        self.study_dataset = []           # Contains the datasets for one study, which contains tuples of numerations and datasets
         self.log_file = None
 
     def read_dataset(self, filename):
+        numeration = []
+        dataset = set()
         with open(filename) as f:
             lines = f.readlines()
             for line in lines:
-                if line.strip() and not line.startswith('#'):                            #   Ignore empty lines and comments
-                    if ';' in line:                                                      #   Numeration is recognized by semicolon, which
-                        self.numeration = [word.strip() for word in line.split(';')]     #   separates the words
+                if line.strip() and not line.startswith('#'):
+                    if line.startswith('Numeration='):
+                        if numeration:
+                            self.study_dataset.append((numeration, dataset))
+                            dataset = set()
+                        numeration = [word.strip() for word in line.split('=')[1].split(',')]
                     else:
-                        self.dataset.add(line.strip())                                   #   Everything else is a sentence
+                        dataset.add(line.strip())
+            self.study_dataset.append((numeration, dataset))
+            print(self.study_dataset)
 
     def start_logging(self):
         log_file = 'log.txt'
         log_file = open(log_file, 'w')
         PhraseStructure.logging = log_file
-        log_file.write(f'Numeration: {self.numeration}\n')
-        log_file.write(f'Predicted outcome: {self.dataset}\n\n\n')
         return log_file
 
-    def evaluate_experiment(self, output_from_simulation, n_steps):
-        print(f'Derivational steps: {n_steps}\n')
-        overgeneralization = output_from_simulation - self.dataset
-        undergeneralization = self.dataset - output_from_simulation
+    def evaluate_experiment(self, output_from_simulation, gold_standard_dataset, n_steps):
+        print(f'\tDerivational steps: {n_steps}')
+        overgeneralization = output_from_simulation - gold_standard_dataset
+        undergeneralization = gold_standard_dataset - output_from_simulation
         total_errors = len(overgeneralization) + len(undergeneralization)
-        print(f'Errors {total_errors}')
+        print(f'\tErrors {total_errors}')
         if total_errors > 0:
-            print(f'Should not generate: {overgeneralization}')
-            print(f'Should generate: {undergeneralization}')
+            print(f'\tShould not generate: {overgeneralization}')
+            print(f'\tShould generate: {undergeneralization}')
 
 
-ld = LanguageData()                                 #   Process the dataset
-ld.read_dataset('dataset2.txt')                     #   Read the dataset'
-sm = SpeakerModel()                                 #   Create a speaker model
-sm.log_file = ld.start_logging()                    #   Begins logging
-sm.derive(ld.numeration)                            #   Create derivation from the numeration
-ld.evaluate_experiment(sm.output_data, sm.n_steps)  #   Evaluate results
+def run_study(ld, sm):
+    sm.log_file = ld.start_logging()
+    n_dataset = 0
+    for numeration, gold_standard_dataset in ld.study_dataset:
+        n_dataset += 1
+        print(f'Dataset {n_dataset}:')
+        sm.log_file.write('\n---------------------------------------------------\n')
+        sm.log_file.write(f'Dataset {n_dataset}:\n')
+        sm.log_file.write(f'Numeration: {numeration}\n')
+        sm.log_file.write(f'Predicted outcome: {gold_standard_dataset}\n\n\n')
+        sm.derive(numeration)
+        ld.evaluate_experiment(sm.output_data, gold_standard_dataset, sm.n_steps)
+
+
+ld = LanguageData()
+ld.read_dataset('dataset2.txt')
+sm = SpeakerModel()
+run_study(ld, sm)

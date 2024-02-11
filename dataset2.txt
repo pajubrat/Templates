@@ -1,11 +1,11 @@
 #
 # Example dataset for Template2
 #
-# Numeration
-C;T;the;man;v;bite;the;dog
 
-# Target sentences
+Numeration=C,T,the,man,sit
+C the man sit#T
+
+Numeration=C,T,the,man,v,bite,the,dog
 C the man bite#v#T the dog
 C the dog bite#v#T the man
 
- 
