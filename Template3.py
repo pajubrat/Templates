@@ -8,13 +8,14 @@
 import itertools
 
 # Lexicon with some features (move into external files)
-lexicon = {'the': {'D'},
+lexicon = {'X': {},
+           'the': {'D'},
            'dog': {'N'},
            'man': {'N'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
            'C': {'C'},
            'v': {'v', '#X'},
-           'sit': {'V', '-COMP:D'},
+           'sit': {'V', 'V/INTR'},
            'bite': {'V', '!COMP:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
@@ -22,7 +23,8 @@ lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-
                             'C': {'!COMP:T', '-SPEC:V', '-SPEC:D', '-SPEC:C', '-SPEC:N'},
                             'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N'},
                             'T': {'!COMP:V', '-SPEC:C', '-SPEC:T'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'}
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'},
+                            'V/INTR': {'-COMP:D', '-COMP:N'}
                             }
 
 major_lexical_categories = {'C', 'N', 'V', 'A', 'D', 'Adv', 'T', 'v'}
@@ -331,8 +333,9 @@ class LanguageData:
                         numeration = [word.strip() for word in line.split('=')[1].split(',')]
                     else:
                         dataset.add(line.strip())
+                    if line.startswith('END'):
+                        break
             self.study_dataset.append((numeration, dataset))
-            print(self.study_dataset)
 
     def start_logging(self):
         log_file = 'log.txt'
