@@ -8,7 +8,7 @@
 import itertools
 
 # Lexicon with some features (move into external files)
-lexicon = {'X': {},
+lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'the': {'D'},
            'dog': {'N'},
            'man': {'N'},
@@ -21,13 +21,13 @@ lexicon = {'X': {},
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V'},
                             'C': {'!COMP:T', '-SPEC:V', '-SPEC:D', '-SPEC:C', '-SPEC:N'},
-                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N'},
+                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D'},
                             'T': {'!COMP:V', '-SPEC:C', '-SPEC:T'},
                             'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'},
                             'V/INTR': {'-COMP:D', '-COMP:N'}
                             }
 
-major_lexical_categories = {'C', 'N', 'V', 'A', 'D', 'Adv', 'T', 'v'}
+major_lexical_categories = {'C', 'N', 'V', 'A', 'D', 'Adv', 'T', 'v', 'a', 'b', 'c', 'd'}
 
 # Stores and maintains the lexicon
 class Lexicon:
@@ -251,7 +251,7 @@ class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
         self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge')]
-        self.n_derivations = 0                                          # Counts the number of derivations
+        self.n_accepted = 0                                          # Counts the number of derivations
         self.n_steps = 0                                                # NUmber of derivational steps
         self.output_data = set()                                        # Stores grammatical output data from the model
         self.lexicon = Lexicon()                                        # Add lexicon
@@ -270,6 +270,7 @@ class SpeakerModel:
     def derive(self, numeration):
         self.n_steps = 0
         self.output_data = set()
+        self.n_accepted = 0
         self.derivational_search_function([self.LexicalRetrieval(item) for item in numeration])
 
     # Derivational search function
@@ -296,8 +297,10 @@ class SpeakerModel:
         prefix = ''
         self.log_file.write(f'\t{X}')
         if X.subcategorization():  # Store only grammatical sentences
-            output_sentence = f'{prefix}{X.linearize()}'
-            print(f'\tAccepted: {output_sentence} {X}')   # Print the output
+            self.n_accepted += 1
+            prefix = f'{self.n_accepted}'
+            output_sentence = f'{X.linearize()}'
+            print(f'\t({prefix}) {output_sentence} {X}')   # Print the output
             self.log_file.write(f'\n\n\t ^ ACCEPTED, OUTPUT: {output_sentence}')
             self.output_data.add(output_sentence.strip())
 

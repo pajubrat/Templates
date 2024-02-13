@@ -2,6 +2,13 @@
 # Example dataset for Template2
 #
 
+Numeration=a,b,c,d
+a b c d
+
+Numeration=the,man,bite,the,dog
+the man bite the dog
+the dog bite the man
+
 Numeration=C,T,the,man,sit
 C the man sit#T
 
