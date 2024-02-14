@@ -10,24 +10,28 @@ import itertools
 # Lexicon with some features (move into external files)
 lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'the': {'D'},
+           'which': {'D', 'WH'},
            'dog': {'N'},
            'man': {'N'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
+           'T*': {'T', '#X', 'T'},
+           'did': {'T', 'EPP'},
            'C': {'C'},
+           'C(wh)': {'C', '#X', 'WH', 'SCOPE', 'SPEC:WH'},
            'v': {'v', '#X'},
            'sit': {'V', 'V/INTR'},
            'bite': {'V', '!COMP:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V'},
-                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:D', '-SPEC:C', '-SPEC:N'},
+                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N'},
                             'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D'},
-                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T'},
+                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T', '-SPEC:V'},
                             'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'},
                             'V/INTR': {'-COMP:D', '-COMP:N'}
                             }
 
-major_lexical_categories = {'C', 'N', 'V', 'A', 'D', 'Adv', 'T', 'v', 'a', 'b', 'c', 'd'}
+major_lexical_categories = {'C', 'N', 'v', 'V', 'A', 'D', 'Adv', 'T', 'a', 'b', 'c', 'd'}
 
 # Stores and maintains the lexicon
 class Lexicon:
@@ -111,11 +115,31 @@ class PhraseStructure:
     # Phrasal repair for X before Merge
     def PhrasalRepair(X):
         H = X.head()
-        if H.EPP() and H.complement() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
-            PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
-            X = H.complement().head().specifier().chaincopy().Merge(X)  #   Phrasal copying
-            PhraseStructure.logging.write(f' = {X}\n')
+        if H.complement():
+            # Phrasal A-bar chains
+            if H.scope_marker() and H.operator() and H.complement().get_goal('WH'):
+                PhraseStructure.logging.write(f'\tA-bar Chain ({H}, {H.complement().get_goal("WH")})')
+                X = H.complement().get_goal('WH').chaincopy().Merge(X)
+                PhraseStructure.logging.write(f' = {X}\n')
+            # Phrasal A-chains
+            elif H.EPP() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
+                PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
+                X = H.complement().head().specifier().chaincopy().Merge(X)
+                PhraseStructure.logging.write(f' = {X}\n')
         return X
+
+    # Searches for a goal for phrasal movement, feature = target feature to be searched
+    def get_goal(X, feature):
+        x = X
+        while x:
+            if x.zero_level():                          # From heads the search continues into complements
+                x = x.complement()                      #
+            else:                                       # For complex constituents...
+                for c in x.const:                       # examine both constituents and
+                    if feature in c.head().features:    # return a constituent with the target feature, otherwise...
+                        return c
+                    if c.head() == x.head():            # search continues downstream inside the same projection
+                        x = c
 
     # Head Merge creates a zero-level category and implements feature inheritance
     def HeadMerge_(X, Y):
@@ -183,9 +207,9 @@ class PhraseStructure:
     # head algorithm
     def specifier(X):
         x = X.head()
-        while x.mother and x.mother.head() == X.head():
-            if x.mother.left_sister() and not x.mother.left_sister().zero_level():
-                return x.mother.left_sister()
+        while x and x.head() == X.head():
+            if x.left_sister() and not x.left_sister().zero_level():
+                return x.left_sister()
             x = x.mother
 
     # Maps phrase structure objects into linear lists of words
@@ -219,6 +243,12 @@ class PhraseStructure:
     # Definition for EPP
     def EPP(X):
         return 'EPP' in X.features
+
+    def operator(X):
+        return 'WH' in X.features
+
+    def scope_marker(X):
+        return 'SCOPE' in X.features
 
     # Printout function
     def __str__(X):
@@ -295,7 +325,7 @@ class SpeakerModel:
     # Processes final output
     def final_output(self, X):
         prefix = ''
-        self.log_file.write(f'\t{X}')
+        self.log_file.write(f'\t\t\t | == {X}')
         if X.subcategorization():  # Store only grammatical sentences
             self.n_accepted += 1
             prefix = f'{self.n_accepted}'
@@ -328,7 +358,7 @@ class LanguageData:
         with open(filename) as f:
             lines = f.readlines()
             for line in lines:
-                if line.strip() and not line.startswith('#'):
+                if line.strip() and not line.startswith('#') and not line.startswith('END'):
                     if line.startswith('Numeration='):
                         if numeration:
                             self.study_dataset.append((numeration, dataset))
@@ -336,8 +366,8 @@ class LanguageData:
                         numeration = [word.strip() for word in line.split('=')[1].split(',')]
                     else:
                         dataset.add(line.strip())
-                    if line.startswith('END'):
-                        break
+                if line.startswith('END'):
+                    break
             self.study_dataset.append((numeration, dataset))
 
     def start_logging(self):

@@ -2,17 +2,61 @@
 # Example dataset for Template2
 #
 
+# 1
 Numeration=a,b,c,d
 a b c d
 
+# 2
 Numeration=the,man,bite,the,dog
 the man bite the dog
 the dog bite the man
 
-Numeration=C,T,the,man,sit
-C the man sit#T
+# 3
+Numeration=T*,the,man,sit
+the man sit#T*
 
-Numeration=C,T,the,man,v,bite,the,dog
-C the man bite#v#T the dog
-C the dog bite#v#T the man
+# 4
+Numeration=T*,the,man,v,bite,the,dog
+the dog bite#T* the man
+the man bite#T* the dog
+
+# 5
+Numeration=T*,the,man,bite,the,dog
+the dog bite#T* the man
+the man bite#T* the dog
+
+# 6
+Numeration=T,the,man,sit
+the man sit#T
+
+# 7
+Numeration=T,the,man,v,bite,the,dog
+the man bite#v#T the dog
+the dog bite#v#T the man
+
+# 8
+Numeration=the,man,did,v,bite,the,dog
+the man did bite#v the dog
+the dog did bite#v the man
+
+# 9 (Sentential force represented as C)
+Numeration=C,the,man,did,v,bite,the,dog
+C the man did bite#v the dog
+C the dog did bite#v the man
+
+# 10 (Aux-inversion)
+Numeration=C(wh),the,man,did,v,bite,the,dog
+did#C(wh) the man bite#v the dog
+did#C(wh) the dog bite#v the man
+
+# 11 (Intransitive interrogative clause)
+Numeration=C(wh),which,man,did,sit
+which man did#C(wh) sit
+
+# 12 (Transitive interrogative clause)
+Numeration=C(wh),the,man,did,v,bite,which,dog
+which dog did#C(wh) the man bite#v
+which man did#C(wh) the dog bite#v
+which dog did#C(wh) bite#v the man
+which man did#C(wh) bite#v the dog
 
