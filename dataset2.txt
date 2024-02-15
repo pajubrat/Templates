@@ -1,3 +1,4 @@
+
 #
 # Example dataset for Template2
 #
@@ -39,24 +40,39 @@ Numeration=the,man,did,v,bite,the,dog
 the man did bite#v the dog
 the dog did bite#v the man
 
-# 9 (Sentential force represented as C)
+# 9 (Sentential force represented as C, did = T)
 Numeration=C,the,man,did,v,bite,the,dog
-C the man did bite#v the dog
-C the dog did bite#v the man
+C the man did bite#v#T the dog
+C the dog did bite#v#T the man
 
-# 10 (Aux-inversion)
+# 10 (Aux-inversion, did = T)
 Numeration=C(wh),the,man,did,v,bite,the,dog
-did#C(wh) the man bite#v the dog
-did#C(wh) the dog bite#v the man
+did#C(wh) the man bite#v#T the dog
+did#C(wh) the dog bite#v#T the man
 
-# 11 (Intransitive interrogative clause)
+# 11 (Intransitive interrogative clause, did = T)
 Numeration=C(wh),which,man,did,sit
 which man did#C(wh) sit
 
-# 12 (Transitive interrogative clause)
+# 12 (Transitive interrogative clause, did = T)
 Numeration=C(wh),the,man,did,v,bite,which,dog
 which dog did#C(wh) the man bite#v
 which man did#C(wh) the dog bite#v
 which dog did#C(wh) bite#v the man
 which man did#C(wh) bite#v the dog
+
+# 13 (CED-effects)
+Numeration=C,T,the,man,from,the,city,sit
+C the man from the city sit#T
+
+# 14 (CED-effects)
+Numeration=C(wh),T,the,man,from,which,city,sit
+
+# 15 (Successive-cyclic A-movement)
+Numeration=the,man,T,seem,to,sit
+the man seem#T to sit
+
+# 15b (embedded finite clause, 15 million calculations)
+# Numeration=C,the,man,T,believe,that,T,the,dog,sit
+# C the man believe#T that the dog sit#T
 

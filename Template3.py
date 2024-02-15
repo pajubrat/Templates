@@ -1,39 +1,56 @@
 #
 # Starting point template for derivational search function
 # for asymmetric binary-branching bare phrase structure
-# with some advanced features such as head chains and
-# standard EPP-induced A-chain
+# with some advanced features such as head and phrasal chains;
+# Agree is an implicit part of the minimal search
 #
 
 import itertools
 
-# Lexicon with some features (move into external files)
+# Lexicon with the following features
+# !COMP: mandatory complement
+# -COMP: illicit complement
+# !SPEC: mandatory specifier
+# -SPEC: illicit specifier
+# EPP: standard EPP triggering A-movement
+# #X: bound morpheme
+# WH: Wh-operator feature
+# SCOPE: Scope marking element for operators
+# + major lexical categories
 lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'the': {'D'},
            'which': {'D', 'WH'},
            'dog': {'N'},
            'man': {'N'},
+           'city': {'N'},
+           'from': {'P'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
            'T*': {'T', '#X', 'T'},
            'did': {'T', 'EPP'},
            'C': {'C'},
            'C(wh)': {'C', '#X', 'WH', 'SCOPE', 'SPEC:WH'},
            'v': {'v', '#X'},
-           'sit': {'V', 'V/INTR'},
+           'sit': {'V', 'V/INTR', '-COMP:T/inf'},
+           'that': {'C'},
+           'believe': {'V', '!COMP:C'},
+           'seem': {'V', 'EPP', '!SPEC:D', '!COMP:T/inf', 'RAISING'},
+           'to': {'T/inf', '!COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'},
            'bite': {'V', '!COMP:D'}}
 
-lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D'},
-                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V'},
-                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N'},
-                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D'},
-                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T', '-SPEC:V'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v'},
-                            'V/INTR': {'-COMP:D', '-COMP:N'}
+lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf'},
+                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-COMP:V'},
+                            'P': {'!COMP:D', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
+                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
+                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
+                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v',  '-SPEC:T/inf'},
+                            'V/INTR': {'-COMP:D', '-COMP:N', '!SPEC:D', '-COMP:T', '-SPEC:T/inf'}
                             }
 
-major_lexical_categories = {'C', 'N', 'v', 'V', 'A', 'D', 'Adv', 'T', 'a', 'b', 'c', 'd'}
+# Major lexical categories assumed in this grammar
+major_lexical_categories = {'C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd'}
 
-# Stores and maintains the lexicon
+# Class which stores and maintains the lexicon
 class Lexicon:
     def __init__(self):
         self.lexical_entries = dict()
@@ -50,16 +67,21 @@ class Lexicon:
     def retrieve_lexical_item(self, name):
         return self.lexical_entries[name]
 
+#
 # Asymmetric binary-branching phrase structure formalism
+# together with several dependencies
+#
 class PhraseStructure:
     logging = None
+    chain_index = 1
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       # Left and right daughter constituents
         self.phon = ''            # Name
-        self.features = set()      # Lexical features
+        self.features = set()     # Lexical features
         self.zero = False         # Zero-level categories
         self.silent = False       # Phonological silencing
-        self.mother = None        # Mother nodes
+        self.chain_index = 0      # Marking chains in the output, not part of the theory
+        self.mother = None        # Mother node
         if X:
             X.mother = self
         if Y:
@@ -73,16 +95,19 @@ class PhraseStructure:
         Y.phon = X.phon
         Y.features = X.features
         Y.zero = X.zero
+        Y.chain_index = X.chain_index
         Y.silent = X.silent
         return Y
 
+    # Copying operation with phonological silencing
+    # Implement chain numbers (if needed) inside this function
     def chaincopy(X):
         Y = X.copy()
         X.silent = True
         return Y
 
     # Zero-level categories are phrase structure objects with less that two daughter constituents
-    # or they are marked as such
+    # or they are marked as zero-level objects
     def zero_level(X):
         return X.zero or X.terminal()
 
@@ -94,42 +119,55 @@ class PhraseStructure:
     def MergePreconditions(X, Y):
         if X.zero_level():
             return X.complement_subcategorization(Y)
+        elif Y.zero_level():
+            return Y.complement_subcategorization(None)
         else:
             return Y.head().specifier_subcategorization(X)
 
-    # Merge
+    # Standard naked Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
     # Merge with head and phrasal repair functions
+    # Assumes that Move is part of Merge and derives the relevant
+    # constructions without countercyclic operations
     def Merge_(X, Y):
         return X.HeadRepair(Y).Merge(Y).PhrasalRepair()
 
     # Head repair for X before Merge
     def HeadRepair(X, Y):
-        if X.zero_level() and X.bound_morpheme() and not Y.head().silent:
+        if X.zero_level() and X.bound_morpheme() and not Y.head().silent:       #   Preconditions
             PhraseStructure.logging.write(f'\tHead Chain ({X}, {Y.head()})\n')
-            X = Y.head().chaincopy().HeadMerge_(X)
+            X = Y.head().chaincopy().HeadMerge_(X)                              #   Operation
         return X
 
     # Phrasal repair for X before Merge
+    # We separate A- and A-bar chains explicitly
     def PhrasalRepair(X):
         H = X.head()
         if H.complement():
             # Phrasal A-bar chains
-            if H.scope_marker() and H.operator() and H.complement().get_goal('WH'):
-                PhraseStructure.logging.write(f'\tA-bar Chain ({H}, {H.complement().get_goal("WH")})')
-                X = H.complement().get_goal('WH').chaincopy().Merge(X)
+            if H.scope_marker() and H.operator() and H.complement().minimal_search('WH') and not H.complement().minimal_search('WH').silent:
+                H.complement().minimal_search('WH').babtize_chain()
+                PhraseStructure.logging.write(f'\tA-bar Chain ({H}, {H.complement().minimal_search("WH")})')
                 PhraseStructure.logging.write(f' = {X}\n')
+                X = H.complement().minimal_search('WH').chaincopy().Merge(X)
             # Phrasal A-chains
             elif H.EPP() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
+                H.complement().head().specifier().babtize_chain()
                 PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
                 X = H.complement().head().specifier().chaincopy().Merge(X)
                 PhraseStructure.logging.write(f' = {X}\n')
         return X
 
+    def babtize_chain(X):
+        if X.chain_index == 0:
+            PhraseStructure.chain_index += 1
+            X.chain_index = PhraseStructure.chain_index
+
     # Searches for a goal for phrasal movement, feature = target feature to be searched
-    def get_goal(X, feature):
+    # This is also the kernel for Agree/probe-goal operation
+    def minimal_search(X, feature):
         x = X
         while x:
             if x.zero_level():                          # From heads the search continues into complements
@@ -141,7 +179,7 @@ class PhraseStructure:
                     if c.head() == x.head():            # search continues downstream inside the same projection
                         x = c
 
-    # Head Merge creates a zero-level category and implements feature inheritance
+    # Head Merge creates zero-level categories and implements feature inheritance
     def HeadMerge_(X, Y):
         Z = X.Merge(Y)
         Z.zero = True
@@ -158,6 +196,7 @@ class PhraseStructure:
         if X.sister() and X.mother.const[0] == X:
             return X.sister()
 
+    # Left sister
     def left_sister(X):
         if X.sister() and X.mother.const[1] == X:
             return X.sister()
@@ -182,6 +221,7 @@ class PhraseStructure:
             return X.const[0].subcategorization() and X.const[1].subcategorization()
 
     # Complement subcategorization under [X Y]
+    # Returns False is subcategorization conditions are not met
     def complement_subcategorization(X, Y):
         comps = {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
         if comps and not (Y and Y.head().features & comps):
@@ -192,6 +232,7 @@ class PhraseStructure:
         return True
 
     # Specifier subcategorization under [_YP XP YP]
+    # Returns False if subcategorization conditions are not met
     def specifier_subcategorization(X, Y=None):
         if not Y:
             Y = X.specifier()
@@ -203,8 +244,9 @@ class PhraseStructure:
             return False
         return True
 
-    # Definition for the notion of specifier based on
-    # head algorithm
+    # A generalized definition for the notion of specifier based on
+    # head algorithm, allows specifier stacking and includes
+    # left-adjoined phrases (if adjunction is part of the grammar)
     def specifier(X):
         x = X.head()
         while x and x.head() == X.head():
@@ -244,17 +286,22 @@ class PhraseStructure:
     def EPP(X):
         return 'EPP' in X.features
 
+    # Definition for operators
     def operator(X):
         return 'WH' in X.features
 
+    # Definition for scope markers
     def scope_marker(X):
         return 'SCOPE' in X.features
 
-    # Printout function
+    # Auxiliary printout function, to help eyeball the output
     def __str__(X):
         str = ''
         if X.silent:                    #   Phonologically silenced constituents are marked by __
-            return '(__)'
+            if X.zero_level():
+                return '__ '
+            else:
+                return f'__:{X.chain_index} '
         if X.terminal():                #   Terminal constituents are spelled out
             str = X.phon
         else:
@@ -270,13 +317,18 @@ class PhraseStructure:
                 if X.const[1].terminal() and const != X.const[1]:   #   Space between terminal elements
                     str += ' '
             str += bracket[1]
+            if X.chain_index != 0:
+                str += f':{X.chain_index} '
         return str
 
     # Defines the major lexical categories used in all printouts
     def lexical_category(X):
         return next((f for f in X.features if f in major_lexical_categories), '?')
 
-# Model of the speaker
+#
+# Model of the speaker which constitutes the executive layer
+# In more realistic models the speaker models are language-specific
+#
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
@@ -305,24 +357,27 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if len(sWM) == 1:                                   #   Only one phrase structure object in working memory
-            self.final_output(next(iter(sWM)))              #   Terminate processing and evaluate solution
+        if len(sWM) == 1:                                                       #   Only one phrase structure object in working memory
+            self.final_output(next(iter(sWM)))                                  #   Terminate processing and evaluate solution
         else:
-            for Preconditions, OP, name in self.external_syntactic_operations:
-                for X, Y in itertools.permutations(sWM, 2):
-                    if Preconditions(X, Y):
-                        Z = OP(X.copy(), Y.copy())                              #   Create new phrase structure object by applying an operation
+            for Preconditions, OP, name in self.external_syntactic_operations:  #   Examine all syntactic operations OP
+                for X, Y in itertools.permutations(sWM, 2):                     #   with all pairs of objects X, Y in sWM
+                    if Preconditions(X, Y):                                     #   Verify preconditions for OP
+                        Z = OP(X.copy(), Y.copy())                              #   Create new phrase structure object Z by applying an operation to X and Y
                         new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}     #   Populate syntactic working memory
                         self.consume_resource(name, [X, Y], Z, new_sWM)         #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)              #   Continue derivation
+                        self.derivational_search_function(new_sWM)              #   Continue derivation, recursive branching
 
-    # Resource recording
+    # Resource recording, this is what gets printed into the log file
+    # Modify to enhance readability and to reflect the operations available
+    # in the grammar
     def consume_resource(self, name, lst, result, sWM):
         self.n_steps += 1
         self.log_file.write(f'\t{name}({self.print_constituent_lst(lst)}) = {result}\n')
         self.log_file.write(f'\t...{self.print_constituent_lst(sWM)} ({self.n_steps})\n\n')
 
     # Processes final output
+    # This corresponds to the horizontal branches of the Y-architecture
     def final_output(self, X):
         prefix = ''
         self.log_file.write(f'\t\t\t | == {X}')
@@ -333,9 +388,10 @@ class SpeakerModel:
             print(f'\t({prefix}) {output_sentence} {X}')   # Print the output
             self.log_file.write(f'\n\n\t ^ ACCEPTED, OUTPUT: {output_sentence}')
             self.output_data.add(output_sentence.strip())
-
+        PhraseStructure.chain_index = 0
         self.log_file.write('\n\n')
 
+    # To help understand the output
     def print_constituent_lst(self, sWM):
         str = ''
         for i, ps in enumerate(sWM):
@@ -347,11 +403,15 @@ class SpeakerModel:
                 str += ', '
         return str
 
+#
+# This class maintains all data used in the simulation
+#
 class LanguageData:
     def __init__(self):
         self.study_dataset = []           # Contains the datasets for one study, which contains tuples of numerations and datasets
         self.log_file = None
 
+    # Read the dataset
     def read_dataset(self, filename):
         numeration = []
         dataset = set()
@@ -386,7 +446,8 @@ class LanguageData:
             print(f'\tShould not generate: {overgeneralization}')
             print(f'\tShould generate: {undergeneralization}')
 
-
+# Run one whole study as defined by the dataset file, itself containing
+# numeration-target sentences blocks
 def run_study(ld, sm):
     sm.log_file = ld.start_logging()
     n_dataset = 0
@@ -401,7 +462,7 @@ def run_study(ld, sm):
         ld.evaluate_experiment(sm.output_data, gold_standard_dataset, sm.n_steps)
 
 
-ld = LanguageData()
-ld.read_dataset('dataset2.txt')
-sm = SpeakerModel()
-run_study(ld, sm)
+ld = LanguageData()                 #   Instantiate the language data object
+ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
+sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
+run_study(ld, sm)                   #   Run the study
