@@ -74,6 +74,7 @@ class Lexicon:
 class PhraseStructure:
     logging = None
     chain_index = 1
+    logging_report = ''
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       # Left and right daughter constituents
         self.phon = ''            # Name
@@ -136,9 +137,9 @@ class PhraseStructure:
 
     # Head repair for X before Merge
     def HeadRepair(X, Y):
-        if X.zero_level() and X.bound_morpheme() and not Y.head().silent:       #   Preconditions
-            PhraseStructure.logging.write(f'\tHead Chain ({X}, {Y.head()})\n')
-            X = Y.head().chaincopy().HeadMerge_(X)                              #   Operation
+        if X.zero_level() and X.bound_morpheme() and not Y.head().silent:           #   Preconditions
+            PhraseStructure.logging_report += f'\tHead Chain ({X}, {Y.head()})\n'
+            X = Y.head().chaincopy().HeadMerge_(X)                                  #   Operation
         return X
 
     # Phrasal repair for X before Merge
@@ -149,15 +150,13 @@ class PhraseStructure:
             # Phrasal A-bar chains
             if H.scope_marker() and H.operator() and H.complement().minimal_search('WH') and not H.complement().minimal_search('WH').silent:
                 H.complement().minimal_search('WH').babtize_chain()
-                PhraseStructure.logging.write(f'\tA-bar Chain ({H}, {H.complement().minimal_search("WH")})')
-                PhraseStructure.logging.write(f' = {X}\n')
+                PhraseStructure.logging_report += f'\tA-bar Chain ({H}, {H.complement().minimal_search("WH")})\n'
                 X = H.complement().minimal_search('WH').chaincopy().Merge(X)
             # Phrasal A-chains
             elif H.EPP() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
                 H.complement().head().specifier().babtize_chain()
-                PhraseStructure.logging.write(f'\tEPP Chain ({H}, {H.complement().head().specifier()})')
+                PhraseStructure.logging_report += '\tA Chain ({H}, {H.complement().head().specifier()})\n'
                 X = H.complement().head().specifier().chaincopy().Merge(X)
-                PhraseStructure.logging.write(f' = {X}\n')
         return X
 
     def babtize_chain(X):
@@ -357,36 +356,40 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if len(sWM) == 1:                                                       #   Only one phrase structure object in working memory
-            self.final_output(next(iter(sWM)))                                  #   Terminate processing and evaluate solution
+        if len(sWM) == 1:                                                           #   Only one phrase structure object in working memory
+            self.final_output(next(iter(sWM)))                                      #   Terminate processing and evaluate solution
         else:
-            for Preconditions, OP, name in self.external_syntactic_operations:  #   Examine all syntactic operations OP
-                for X, Y in itertools.permutations(sWM, 2):                     #   with all pairs of objects X, Y in sWM
-                    if Preconditions(X, Y):                                     #   Verify preconditions for OP
-                        Z = OP(X.copy(), Y.copy())                              #   Create new phrase structure object Z by applying an operation to X and Y
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}     #   Populate syntactic working memory
-                        self.consume_resource(name, [X, Y], Z, new_sWM)         #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)              #   Continue derivation, recursive branching
+            for Preconditions, OP, name in self.external_syntactic_operations:      #   Examine all syntactic operations OP
+                for X, Y in itertools.permutations(sWM, 2):                         #   with all pairs of objects X, Y in sWM
+                    if Preconditions(X, Y):                                         #   Verify preconditions for OP
+                        Z = OP(X.copy(), Y.copy())                                  #   Create new phrase structure object Z by applying an operation to X and Y
+                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}         #   Populate syntactic working memory
+                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})\n\t= {Z}\n'    #   Add line to logging report
+                        self.consume_resource(new_sWM, sWM)                         #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)                  #   Continue derivation, recursive branching
 
     # Resource recording, this is what gets printed into the log file
     # Modify to enhance readability and to reflect the operations available
     # in the grammar
-    def consume_resource(self, name, lst, result, sWM):
+    def consume_resource(self, new_sWM, old_sWM):
         self.n_steps += 1
-        self.log_file.write(f'\t{name}({self.print_constituent_lst(lst)}) = {result}\n')
-        self.log_file.write(f'\t...{self.print_constituent_lst(sWM)} ({self.n_steps})\n\n')
+        self.log_file.write(f'{self.n_steps}.\n\n')
+        self.log_file.write(f'\t{self.print_constituent_lst(old_sWM)}\n\n')
+        self.log_file.write(f'{PhraseStructure.logging_report}')
+        self.log_file.write(f'\n\t{self.print_constituent_lst(new_sWM)}\n\n')
+        PhraseStructure.logging_report = ''
 
     # Processes final output
     # This corresponds to the horizontal branches of the Y-architecture
     def final_output(self, X):
         prefix = ''
-        self.log_file.write(f'\t\t\t | == {X}')
+        self.log_file.write(f'\t|== {X}')
         if X.subcategorization():  # Store only grammatical sentences
             self.n_accepted += 1
             prefix = f'{self.n_accepted}'
             output_sentence = f'{X.linearize()}'
             print(f'\t({prefix}) {output_sentence} {X}')   # Print the output
-            self.log_file.write(f'\n\n\t ^ ACCEPTED, OUTPUT: {output_sentence}')
+            self.log_file.write(f'\t<= ACCEPTED: {output_sentence}')
             self.output_data.add(output_sentence.strip())
         PhraseStructure.chain_index = 0
         self.log_file.write('\n\n')
