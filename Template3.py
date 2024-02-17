@@ -27,9 +27,11 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
            'T*': {'T', '#X', 'T'},
            'did': {'T', 'EPP'},
+           'was': {'T', 'EPP'},
            'C': {'C'},
            'C(wh)': {'C', '#X', 'WH', 'SCOPE', 'SPEC:WH'},
            'v': {'v', '#X'},
+           'v*': {'V', 'EPP', '#X', '!COMP:V', '-SPEC:v'},
            'sit': {'V', 'V/INTR', '-COMP:T/inf'},
            'that': {'C'},
            'believe': {'V', '!COMP:C'},
@@ -38,7 +40,7 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'bite': {'V', '!COMP:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf'},
-                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-COMP:V'},
+                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf'},
                             'P': {'!COMP:D', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
                             'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
                             'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
@@ -146,17 +148,21 @@ class PhraseStructure:
     # We separate A- and A-bar chains explicitly
     def PhrasalRepair(X):
         H = X.head()
+        target = None
         if H.complement():
             # Phrasal A-bar chains
             if H.scope_marker() and H.operator() and H.complement().minimal_search('WH') and not H.complement().minimal_search('WH').silent:
-                H.complement().minimal_search('WH').babtize_chain()
-                PhraseStructure.logging_report += f'\tA-bar Chain ({H}, {H.complement().minimal_search("WH")})\n'
-                X = H.complement().minimal_search('WH').chaincopy().Merge(X)
+                target = H.complement().minimal_search('WH')
             # Phrasal A-chains
-            elif H.EPP() and H.complement().head().specifier() and not H.complement().head().specifier().silent:
-                H.complement().head().specifier().babtize_chain()
-                PhraseStructure.logging_report += '\tA Chain ({H}, {H.complement().head().specifier()})\n'
-                X = H.complement().head().specifier().chaincopy().Merge(X)
+            elif H.EPP() and H.complement():
+                if H.complement().head().specifier() and not H.complement().head().specifier().silent:
+                    target = H.complement().head().specifier()
+                elif H.complement().head().complement() and not H.complement().head().complement().silent:
+                    target = H.complement().head().complement()
+            if target:
+                target.babtize_chain()
+                X = target.chaincopy().Merge(X)
+                PhraseStructure.logging_report += f'\tChain ({H}, {target})\n'
         return X
 
     def babtize_chain(X):

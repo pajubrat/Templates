@@ -76,3 +76,6 @@ the man seem#T to sit
 # Numeration=C,the,man,T,believe,that,T,the,dog,sit
 # C the man believe#T that the dog sit#T
 
+# 16 (personal passive)
+Numeration=was,v*,bite,the,man
+the man was bite#v*
