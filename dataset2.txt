@@ -13,8 +13,8 @@ the man bite the dog
 the dog bite the man
 
 # 3
-Numeration=T*,the,man,sit
-the man sit#T*
+Numeration=T*,the,dog,bark
+the dog bark#T*
 
 # 4
 Numeration=T*,the,man,v,bite,the,dog
@@ -27,8 +27,8 @@ the dog bite#T* the man
 the man bite#T* the dog
 
 # 6
-Numeration=T,the,man,sit
-the man sit#T
+Numeration=T,the,dog,bark
+the dog bark#T
 
 # 7
 Numeration=T,the,man,v,bite,the,dog
@@ -51,8 +51,8 @@ did#C(wh) the man bite#v#T the dog
 did#C(wh) the dog bite#v#T the man
 
 # 11 (Intransitive interrogative clause, did = T)
-Numeration=C(wh),which,man,did,sit
-which man did#C(wh) sit
+Numeration=C(wh),which,dog,did,bark
+which dog did#C(wh) bark
 
 # 12 (Transitive interrogative clause, did = T)
 Numeration=C(wh),the,man,did,v,bite,which,dog
@@ -62,19 +62,19 @@ which dog did#C(wh) bite#v the man
 which man did#C(wh) bite#v the dog
 
 # 13 (CED-effects)
-Numeration=C,T,the,man,from,the,city,sit
-C the man from the city sit#T
+Numeration=C,T,the,dog,from,the,city,bark
+C the dog from the city bark#T
 
 # 14 (CED-effects)
-Numeration=C(wh),T,the,man,from,which,city,sit
+Numeration=C(wh),T,the,dog,from,which,city,bark
 
 # 15 (Successive-cyclic A-movement)
-Numeration=the,man,T,seem,to,sit
-the man seem#T to sit
+Numeration=the,dog,T,seem,to,bark
+the dog seem#T to bark
 
 # 15b (embedded finite clause, 15 million calculations)
-# Numeration=C,the,man,T,believe,that,T,the,dog,sit
-# C the man believe#T that the dog sit#T
+# Numeration=C,the,man,T,believe,that,T,the,dog,bark
+# C the man believe#T that the dog bark#T
 
 # 16 (personal passive)
 Numeration=was,v*,bite,the,man
