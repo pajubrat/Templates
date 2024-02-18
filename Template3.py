@@ -22,6 +22,7 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'which': {'D', 'WH'},
            'dog': {'N'},
            'man': {'N'},
+           'angry': {'A', 'α'},
            'city': {'N'},
            'from': {'P'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
@@ -191,6 +192,15 @@ class PhraseStructure:
         Z.features = Y.features
         return Z
 
+    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
+    def AdjunctMerge_(X, Y):
+        X.mother = Y
+        return Y
+
+    # Preconditions for adjunct Merge
+    def AdjunctMergePreconditions(X, Y):
+        return X.adjoinable()
+
     # Determines whether X has a sister constituent and returns that constituent if present
     def sister(X):
         if X.mother:
@@ -208,14 +218,10 @@ class PhraseStructure:
 
     # Calculates the head of any phrase structure object X ("labelling algorithm")
     def head(X):
-        if X.zero_level():                    #   X0: X0 is the head
-            return X
-        elif X.const[0].zero_level():         #   [X0 Y(P)]: X0 is the head
-            return X.const[0]
-        elif X.const[1].zero_level():         #   [XP Y0]: Y0 is the head
-            return X.const[1]
-        else:
-            return X.const[1].head()          #   [XP YP]: return the head of YP
+        for x in (X,) + X.const:
+            if x.zero_level():
+                return x
+        return x.head()
 
     # Verifies (recursively) that the configuration satisfies complement and
     # specifier subcategorization
@@ -268,8 +274,8 @@ class PhraseStructure:
             if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
             else:
-                linearized_output_str += X.const[0].linearize()      # Recursion to left
-                linearized_output_str += X.const[1].linearize()      # Recursion to right
+                for x in X.const:
+                    linearized_output_str += x.linearize()
         return linearized_output_str
 
     # Spellout algorithm for words
@@ -298,6 +304,10 @@ class PhraseStructure:
     # Definition for scope markers
     def scope_marker(X):
         return 'SCOPE' in X.features
+
+    # Definition for adjoinability
+    def adjoinable(X):
+        return 'α' in X.features
 
     # Auxiliary printout function, to help eyeball the output
     def __str__(X):
@@ -337,7 +347,8 @@ class PhraseStructure:
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
-        self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge')]
+        self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge'),
+                                              (PhraseStructure.AdjunctMergePreconditions, PhraseStructure.AdjunctMerge_, 'Adjoin')]
         self.n_accepted = 0                                          # Counts the number of derivations
         self.n_steps = 0                                                # NUmber of derivational steps
         self.output_data = set()                                        # Stores grammatical output data from the model
@@ -362,8 +373,8 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if len(sWM) == 1:                                                           #   Only one phrase structure object in working memory
-            self.final_output(next(iter(sWM)))                                      #   Terminate processing and evaluate solution
+        if self.derivation_is_complete(sWM):                                        #   Only one phrase structure object in working memory
+            self.process_final_output(self.root_structure(sWM))                     #   Terminate processing and evaluate solution
         else:
             for Preconditions, OP, name in self.external_syntactic_operations:      #   Examine all syntactic operations OP
                 for X, Y in itertools.permutations(sWM, 2):                         #   with all pairs of objects X, Y in sWM
@@ -373,6 +384,14 @@ class SpeakerModel:
                         PhraseStructure.logging_report += f'\t{name}({X}, {Y})\n\t= {Z}\n'    #   Add line to logging report
                         self.consume_resource(new_sWM, sWM)                         #   Record resource consumption and write log entries
                         self.derivational_search_function(new_sWM)                  #   Continue derivation, recursive branching
+
+    @staticmethod
+    def derivation_is_complete(sWM):
+        return len({X for X in sWM if not X.mother}) == 1
+
+    @staticmethod
+    def root_structure(sWM):
+        return next((X for X in sWM if not X.mother))
 
     # Resource recording, this is what gets printed into the log file
     # Modify to enhance readability and to reflect the operations available
@@ -387,7 +406,7 @@ class SpeakerModel:
 
     # Processes final output
     # This corresponds to the horizontal branches of the Y-architecture
-    def final_output(self, X):
+    def process_final_output(self, X):
         prefix = ''
         self.log_file.write(f'\t|== {X}')
         if X.subcategorization():  # Store only grammatical sentences
