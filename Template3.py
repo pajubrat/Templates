@@ -136,7 +136,7 @@ class PhraseStructure:
     # Assumes that Move is part of Merge and derives the relevant
     # constructions without countercyclic operations
     def Merge_(X, Y):
-        return X.HeadRepair(Y).Merge(Y).PhrasalRepair()
+        return {X.HeadRepair(Y).Merge(Y).PhrasalRepair()}
 
     # Head repair for X before Merge
     def HeadRepair(X, Y):
@@ -195,7 +195,7 @@ class PhraseStructure:
     # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
     def AdjunctMerge_(X, Y):
         X.mother = Y
-        return Y
+        return {X, Y}
 
     # Preconditions for adjunct Merge
     def AdjunctMergePreconditions(X, Y):
@@ -373,17 +373,17 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if self.derivation_is_complete(sWM):                                        #   Only one phrase structure object in working memory
-            self.process_final_output(self.root_structure(sWM))                     #   Terminate processing and evaluate solution
+        if self.derivation_is_complete(sWM):                                            #   Only one phrase structure object in working memory
+            self.process_final_output(self.root_structure(sWM))                         #   Terminate processing and evaluate solution
         else:
-            for Preconditions, OP, name in self.external_syntactic_operations:      #   Examine all syntactic operations OP
-                for X, Y in itertools.permutations(sWM, 2):                         #   with all pairs of objects X, Y in sWM
-                    if Preconditions(X, Y):                                         #   Verify preconditions for OP
-                        Z = OP(X.copy(), Y.copy())                                  #   Create new phrase structure object Z by applying an operation to X and Y
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | {Z}         #   Populate syntactic working memory
-                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})\n\t= {Z}\n'    #   Add line to logging report
-                        self.consume_resource(new_sWM, sWM)                         #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)                  #   Continue derivation, recursive branching
+            for Preconditions, OP, name in self.external_syntactic_operations:          #   Examine all syntactic operations OP
+                for X, Y in itertools.permutations(sWM, 2):
+                    if not X.mother and not Y.mother and Preconditions(X, Y):
+                        new_objects = OP(X.copy(), Y.copy())                            #   Create new phrase structure object Z by applying an operation to X and Y
+                        new_sWM = {x for x in sWM if x not in {X, Y}} | new_objects     #   Populate syntactic working memory
+                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'         #   Add line to logging report
+                        self.consume_resource(new_sWM, sWM)                             #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)                      #   Continue derivation, recursive branching
 
     @staticmethod
     def derivation_is_complete(sWM):
@@ -421,14 +421,22 @@ class SpeakerModel:
 
     # To help understand the output
     def print_constituent_lst(self, sWM):
-        str = ''
-        for i, ps in enumerate(sWM):
-            if ps.terminal():
-                str += f'[{ps}]'
-            else:
-                str += f'{ps}'
-            if i < len(sWM)-1:
-                str += ', '
+        def print_lst(lst):
+            str = ''
+            for i, ps in enumerate(lst):
+                if ps.terminal():
+                    str += f'[{ps}]'
+                else:
+                    str += f'{ps}'
+                if i < len(lst) - 1:
+                    str += ', '
+            return str
+
+        aWM = [x for x in sWM if not x.mother]
+        iWM = [x for x in sWM if x.mother]
+        str = f'{print_lst(aWM)}'
+        if iWM:
+            str += f' + {{ {print_lst(iWM)} }}'
         return str
 
 #
