@@ -22,7 +22,8 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'which': {'D', 'WH'},
            'dog': {'N'},
            'man': {'N'},
-           'angry': {'A', 'α:N'},
+           'angry': {'A', 'α:N', 'λ:L'},
+           'frequently': {'Adv', 'α:V', 'λ:R'},
            'city': {'N'},
            'from': {'P'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
@@ -40,14 +41,15 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'to': {'T/inf', '!COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'},
            'bite': {'V', '!COMP:D'}}
 
-lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf'},
+lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A'},
-                            'P': {'!COMP:D', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
-                            'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
-                            'A': {'-COMP:D', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T'},
-                            'N': {'-COMP:A', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
-                            'T': {'!COMP:V', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:A', '-COMP:v',  '-SPEC:T/inf'},
+                            'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D'},
+                            'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
+                            'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
+                            'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T'},
+                            'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
+                            'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf'},
                             'V/INTR': {'-COMP:D', '-COMP:N', '!SPEC:D', '-COMP:T', '-SPEC:T/inf'}
                             }
 
@@ -281,14 +283,16 @@ class PhraseStructure:
     # involved in the implementation of the PF-spellout mapping
     def linearize(X):
         linearized_output_str = ''
+        for x in (x for x in X.adjuncts if x.linearizes_left()):
+            linearized_output_str += x.linearize()
         if not X.silent:
-            for x in X.adjuncts:
-                linearized_output_str += x.linearize()
             if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
             else:
                 for x in X.const:
                     linearized_output_str += x.linearize()
+        for x in (x for x in X.adjuncts if x.linearizes_right()):
+            linearized_output_str += x.linearize()
         return linearized_output_str
 
     # Spellout algorithm for words
@@ -317,6 +321,12 @@ class PhraseStructure:
     # Definition for scope markers
     def scope_marker(X):
         return 'SCOPE' in X.features
+
+    def linearizes_left(X):
+        return 'λ:L' in X.head().features
+
+    def linearizes_right(X):
+        return 'λ:R' in X.head().features
 
     # Definition for adjoinability
     def adjoinable(X):
@@ -419,9 +429,9 @@ class SpeakerModel:
     def consume_resource(self, new_sWM, old_sWM):
         self.n_steps += 1
         self.log_file.write(f'{self.n_steps}.\n\n')
-        self.log_file.write(f'\tsWM: {{ {self.print_constituent_lst(old_sWM)} }}\n')
+        self.log_file.write(f'\tsWM: {self.print_constituent_lst(old_sWM)}\n')
         self.log_file.write(f'{PhraseStructure.logging_report}')
-        self.log_file.write(f'\n\tsWM´: {{ {self.print_constituent_lst(new_sWM)} }}\n\n')
+        self.log_file.write(f'\n\tsWM´: {self.print_constituent_lst(new_sWM)}\n\n')
         PhraseStructure.logging_report = ''
 
     # Processes final output

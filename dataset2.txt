@@ -6,6 +6,29 @@
 # 1
 Numeration=a,b,c,d
 a b c d
+a c b d
+a d c b
+c b a d
+c a d b
+c b d a
+a d b c
+d a c b
+b c d a
+d b c a
+a c d b
+d b a c
+b c a d
+d a b c
+c d b a
+d c a b
+b d c a
+b a d c
+b a c d
+c d a b
+d c b a
+c a b d
+b d a c
+a b d c
 
 # 2
 Numeration=the,man,bite,the,dog
@@ -42,13 +65,13 @@ the dog did bite#v the man
 
 # 9 (Sentential force represented as C, did = T)
 Numeration=C,the,man,did,v,bite,the,dog
-C the man did bite#v#T the dog
-C the dog did bite#v#T the man
+C the man did bite#v the dog
+C the dog did bite#v the man
 
 # 10 (Aux-inversion, did = T)
 Numeration=C(wh),the,man,did,v,bite,the,dog
-did#C(wh) the man bite#v#T the dog
-did#C(wh) the dog bite#v#T the man
+did#C(wh) the man bite#v the dog
+did#C(wh) the dog bite#v the man
 
 # 11 (Intransitive interrogative clause, did = T)
 Numeration=C(wh),which,dog,did,bark
@@ -80,11 +103,25 @@ the dog seem#T to bark
 Numeration=was,v*,bite,the,man
 the man was bite#v*
 
-# 17 (Adjunction)
+# 17 (Adverb adjunction, intransitive clause)
+Numeration=T,the,dog,bark,frequently
+the dog bark#T frequently
+frequently the dog bark#T
+
+# 18 (Adjunction, transitive clause)
+Numeration=T,the,dog,v,bite,the,man,frequently
+the dog bite#v#T the man frequently
+the dog bite#v#T frequently the man
+frequently the dog bite#v#T the man
+the man bite#v#T the dog frequently
+the man bite#v#T frequently the dog
+frequently the man bite#v#T the dog
+
+# 18 (Adjunction, adjective inside DP)
 Numeration=the,angry,dog
 the angry dog
 
-# 18 (Adjunction in a finite clause)
+# 19 (Adjunction, adjective inside DP, in a finite clause)
 Numeration=T,the,angry,dog,bark
 the angry dog bark#T
 
