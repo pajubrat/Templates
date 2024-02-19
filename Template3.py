@@ -22,7 +22,7 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'which': {'D', 'WH'},
            'dog': {'N'},
            'man': {'N'},
-           'angry': {'A', 'α'},
+           'angry': {'A', 'α:N'},
            'city': {'N'},
            'from': {'P'},
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
@@ -41,12 +41,13 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'bite': {'V', '!COMP:D'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf'},
-                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf'},
+                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A'},
                             'P': {'!COMP:D', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
                             'C': {'!COMP:T', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
-                            'N': {'-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
+                            'A': {'-COMP:D', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T'},
+                            'N': {'-COMP:A', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
                             'T': {'!COMP:V', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:v',  '-SPEC:T/inf'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:A', '-COMP:v',  '-SPEC:T/inf'},
                             'V/INTR': {'-COMP:D', '-COMP:N', '!SPEC:D', '-COMP:T', '-SPEC:T/inf'}
                             }
 
@@ -80,6 +81,7 @@ class PhraseStructure:
     logging_report = ''
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       # Left and right daughter constituents
+        self.adjuncts = set()     # Adjunct pointers, for bookkeeping during derivation, not part of the theory
         self.phon = ''            # Name
         self.features = set()     # Lexical features
         self.zero = False         # Zero-level categories
@@ -91,22 +93,26 @@ class PhraseStructure:
         if Y:
             Y.mother = self
 
-    def copy(X):
+    def ccopy(X):
         if not X.terminal():
-            Y = PhraseStructure(X.const[0].copy(), X.const[1].copy())
+            Y = PhraseStructure(X.const[0].ccopy(), X.const[1].ccopy())
         else:
             Y = PhraseStructure()
+        Y.copy_properties(X)
+        return Y
+
+    def copy_properties(Y, X):
         Y.phon = X.phon
         Y.features = X.features
         Y.zero = X.zero
         Y.chain_index = X.chain_index
         Y.silent = X.silent
-        return Y
+        Y.adjuncts = X.adjuncts.copy()
 
     # Copying operation with phonological silencing
     # Implement chain numbers (if needed) inside this function
     def chaincopy(X):
-        Y = X.copy()
+        Y = X.ccopy()
         X.silent = True
         return Y
 
@@ -117,7 +123,10 @@ class PhraseStructure:
 
     # Terminal elements do not have two daughter constituents
     def terminal(X):
-        return not X.const[0] or not X.const[1]
+        for x in X.const:
+            if x:
+                return False
+        return True
 
     # Preconditions for Merge
     def MergePreconditions(X, Y):
@@ -166,6 +175,24 @@ class PhraseStructure:
                 PhraseStructure.logging_report += f'\tChain ({H}, {target})\n'
         return X
 
+    # Head Merge creates zero-level categories and implements feature inheritance
+    def HeadMerge_(X, Y):
+        Z = X.Merge(Y)
+        Z.zero = True
+        Z.features = Y.features
+        Z.adjuncts = Y.adjuncts
+        return Z
+
+    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
+    def Adjoin_(X, Y):
+        X.mother = Y
+        Y.adjuncts.add(X)
+        return {X, Y}
+
+    # Preconditions for adjunct Merge
+    def AdjunctionPreconditions(X, Y):
+        return X.adjoinable() and X.adjoinable() in Y.head().features
+
     def babtize_chain(X):
         if X.chain_index == 0:
             PhraseStructure.chain_index += 1
@@ -185,22 +212,6 @@ class PhraseStructure:
                     if c.head() == x.head():            # search continues downstream inside the same projection
                         x = c
 
-    # Head Merge creates zero-level categories and implements feature inheritance
-    def HeadMerge_(X, Y):
-        Z = X.Merge(Y)
-        Z.zero = True
-        Z.features = Y.features
-        return Z
-
-    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
-    def AdjunctMerge_(X, Y):
-        X.mother = Y
-        return {X, Y}
-
-    # Preconditions for adjunct Merge
-    def AdjunctMergePreconditions(X, Y):
-        return X.adjoinable()
-
     # Determines whether X has a sister constituent and returns that constituent if present
     def sister(X):
         if X.mother:
@@ -219,7 +230,7 @@ class PhraseStructure:
     # Calculates the head of any phrase structure object X ("labelling algorithm")
     def head(X):
         for x in (X,) + X.const:
-            if x.zero_level():
+            if x and x.zero_level():
                 return x
         return x.head()
 
@@ -271,6 +282,8 @@ class PhraseStructure:
     def linearize(X):
         linearized_output_str = ''
         if not X.silent:
+            for x in X.adjuncts:
+                linearized_output_str += x.linearize()
             if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
             else:
@@ -285,8 +298,8 @@ class PhraseStructure:
                 word_str += '#'
             word_str += X.phon
         else:
-            word_str = X.const[0].linearize_word(word_str)
-            word_str = X.const[1].linearize_word(word_str)
+            for x in X.const:
+                word_str = x.linearize_word(word_str)
         return word_str
 
     # Definition for bound morpheme
@@ -307,7 +320,9 @@ class PhraseStructure:
 
     # Definition for adjoinability
     def adjoinable(X):
-        return 'α' in X.features
+        for f in X.features:
+            if f.startswith('α:'):
+                return f.split(':')[1]
 
     # Auxiliary printout function, to help eyeball the output
     def __str__(X):
@@ -317,8 +332,13 @@ class PhraseStructure:
                 return '__ '
             else:
                 return f'__:{X.chain_index} '
+        if X.mother and X not in X.mother.const:                    # Adjunct printout, add the adjunction link
+            if X.mother.zero_level():
+                str += f'{X.mother.head().lexical_category()}|'
+            else:
+                str += f'{X.mother.head().lexical_category()}P|'
         if X.terminal():                #   Terminal constituents are spelled out
-            str = X.phon
+            str += X.phon
         else:
             if X.zero_level():          #   Non-terminal zero-level categories use different brackets
                 bracket = ('(', ')')
@@ -328,12 +348,12 @@ class PhraseStructure:
             if not X.zero_level():
                 str += f'_{X.head().lexical_category()}P '  #   Print information about heads and labelling
             for const in X.const:
-                str = str + f'{const}'
-                if X.const[1].terminal() and const != X.const[1]:   #   Space between terminal elements
-                    str += ' '
+                str += f'{const} '
             str += bracket[1]
             if X.chain_index != 0:
                 str += f':{X.chain_index} '
+        for x in X.adjuncts:
+            str += '*'
         return str
 
     # Defines the major lexical categories used in all printouts
@@ -348,7 +368,7 @@ class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
         self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge'),
-                                              (PhraseStructure.AdjunctMergePreconditions, PhraseStructure.AdjunctMerge_, 'Adjoin')]
+                                              (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 'Adjoin')]
         self.n_accepted = 0                                          # Counts the number of derivations
         self.n_steps = 0                                                # NUmber of derivational steps
         self.output_data = set()                                        # Stores grammatical output data from the model
@@ -361,6 +381,7 @@ class SpeakerModel:
         ps = PhraseStructure()
         ps.features = self.lexicon.retrieve_lexical_item(name)  # Retrieves lexical features from the lexicon
         ps.phon = name                                          # Name for identification and easy recognition
+        ps.zero = True
         return ps
 
     # Wrapper function for the derivational search function
@@ -374,14 +395,13 @@ class SpeakerModel:
     # Derivational search function
     def derivational_search_function(self, sWM):
         if self.derivation_is_complete(sWM):                                            #   Only one phrase structure object in working memory
-            self.process_final_output(self.root_structure(sWM))                         #   Terminate processing and evaluate solution
+            self.process_final_output(sWM)                                              #   Terminate processing and evaluate solution
         else:
             for Preconditions, OP, name in self.external_syntactic_operations:          #   Examine all syntactic operations OP
                 for X, Y in itertools.permutations(sWM, 2):
                     if not X.mother and not Y.mother and Preconditions(X, Y):
-                        new_objects = OP(X.copy(), Y.copy())                            #   Create new phrase structure object Z by applying an operation to X and Y
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | new_objects     #   Populate syntactic working memory
-                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'         #   Add line to logging report
+                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'  # Add line to logging report
+                        new_sWM = {x for x in sWM if x not in {X, Y}} | OP(X.ccopy(), Y.ccopy())      #   Populate syntactic working memory
                         self.consume_resource(new_sWM, sWM)                             #   Record resource consumption and write log entries
                         self.derivational_search_function(new_sWM)                      #   Continue derivation, recursive branching
 
@@ -399,22 +419,22 @@ class SpeakerModel:
     def consume_resource(self, new_sWM, old_sWM):
         self.n_steps += 1
         self.log_file.write(f'{self.n_steps}.\n\n')
-        self.log_file.write(f'\t{self.print_constituent_lst(old_sWM)}\n\n')
+        self.log_file.write(f'\tsWM: {{ {self.print_constituent_lst(old_sWM)} }}\n')
         self.log_file.write(f'{PhraseStructure.logging_report}')
-        self.log_file.write(f'\n\t{self.print_constituent_lst(new_sWM)}\n\n')
+        self.log_file.write(f'\n\tsWM´: {{ {self.print_constituent_lst(new_sWM)} }}\n\n')
         PhraseStructure.logging_report = ''
 
     # Processes final output
     # This corresponds to the horizontal branches of the Y-architecture
-    def process_final_output(self, X):
-        prefix = ''
-        self.log_file.write(f'\t|== {X}')
+    def process_final_output(self, sWM):
+        self.log_file.write(f'\t{self.print_constituent_lst(sWM)}\n')
+        X = self.root_structure(sWM)
         if X.subcategorization():  # Store only grammatical sentences
             self.n_accepted += 1
             prefix = f'{self.n_accepted}'
             output_sentence = f'{X.linearize()}'
-            print(f'\t({prefix}) {output_sentence} {X}')   # Print the output
-            self.log_file.write(f'\t<= ACCEPTED: {output_sentence}')
+            print(f'\t({prefix}) {output_sentence} {self.print_constituent_lst(sWM)}')   # Print the output
+            self.log_file.write(f'\t^ ACCEPTED: {output_sentence}')
             self.output_data.add(output_sentence.strip())
         PhraseStructure.chain_index = 0
         self.log_file.write('\n\n')
@@ -425,7 +445,7 @@ class SpeakerModel:
             str = ''
             for i, ps in enumerate(lst):
                 if ps.terminal():
-                    str += f'[{ps}]'
+                    str += f'{ps}°'
                 else:
                     str += f'{ps}'
                 if i < len(lst) - 1:

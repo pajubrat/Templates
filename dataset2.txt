@@ -79,3 +79,13 @@ the dog seem#T to bark
 # 16 (personal passive)
 Numeration=was,v*,bite,the,man
 the man was bite#v*
+
+# 17 (Adjunction)
+Numeration=the,angry,dog
+the angry dog
+
+# 18 (Adjunction in a finite clause)
+Numeration=T,the,angry,dog,bark
+the angry dog bark#T
+
+
