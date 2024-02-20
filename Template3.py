@@ -26,6 +26,7 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'frequently': {'Adv', 'α:V', 'λ:R'},
            'city': {'N'},
            'from': {'P'},
+           'in': {'P', 'α:V', },
            'T': {'T', '#X', 'EPP', '!SPEC:D'},
            'T*': {'T', '#X', 'T'},
            'did': {'T', 'EPP'},
@@ -44,7 +45,7 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
 lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A'},
                             'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D'},
-                            'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf'},
+                            'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
                             'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
                             'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T'},
                             'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
@@ -54,7 +55,7 @@ lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', 
                             }
 
 # Major lexical categories assumed in this grammar
-major_lexical_categories = {'C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd'}
+major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd']
 
 # Class which stores and maintains the lexicon
 class Lexicon:
@@ -193,7 +194,7 @@ class PhraseStructure:
 
     # Preconditions for adjunct Merge
     def AdjunctionPreconditions(X, Y):
-        return X.adjoinable() and X.adjoinable() in Y.head().features
+        return X.head().adjoinable() and X.head().adjoinable() in Y.head().features
 
     def babtize_chain(X):
         if X.chain_index == 0:
@@ -437,16 +438,18 @@ class SpeakerModel:
     # Processes final output
     # This corresponds to the horizontal branches of the Y-architecture
     def process_final_output(self, sWM):
-        self.log_file.write(f'\t{self.print_constituent_lst(sWM)}\n')
-        X = self.root_structure(sWM)
-        if X.subcategorization():  # Store only grammatical sentences
-            self.n_accepted += 1
-            prefix = f'{self.n_accepted}'
-            output_sentence = f'{X.linearize()}'
-            print(f'\t({prefix}) {output_sentence} {self.print_constituent_lst(sWM)}')   # Print the output
-            self.log_file.write(f'\t^ ACCEPTED: {output_sentence}')
-            self.output_data.add(output_sentence.strip())
         PhraseStructure.chain_index = 0
+        self.log_file.write(f'\t{self.print_constituent_lst(sWM)}\n')
+        for X in sWM:
+            if not X.subcategorization():
+                self.log_file.write('\n\n')
+                return
+        self.n_accepted += 1
+        prefix = f'{self.n_accepted}'
+        output_sentence = f'{self.root_structure(sWM).linearize()}'
+        print(f'\t({prefix}) {output_sentence} {self.print_constituent_lst(sWM)}')   # Print the output
+        self.log_file.write(f'\t^ ACCEPTED: {output_sentence}')
+        self.output_data.add(output_sentence.strip())
         self.log_file.write('\n\n')
 
     # To help understand the output

@@ -1,4 +1,5 @@
 
+
 #
 # Example dataset for Template2
 #
@@ -117,12 +118,18 @@ the man bite#v#T the dog frequently
 the man bite#v#T frequently the dog
 frequently the man bite#v#T the dog
 
-# 18 (Adjunction, adjective inside DP)
+# 19 (Adjunction, adjective inside DP)
 Numeration=the,angry,dog
 the angry dog
 
-# 19 (Adjunction, adjective inside DP, in a finite clause)
+# 20 (Adjunction, adjective inside DP, in a finite clause)
 Numeration=T,the,angry,dog,bark
 the angry dog bark#T
 
+# 21 (Right-adjunction of PP to VP)
+Numeration=the,dog,bark,in,the,city
+the dog bark in the city
+the city bark in the dog
 
+# 22 (Right-adjunction and wh-extraction)
+Numeration=C(wh),the,dog,did,bark,in,which,city
