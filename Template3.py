@@ -47,7 +47,7 @@ lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', 
                             'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D'},
                             'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
                             'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
-                            'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T'},
+                            'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
                             'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
                             'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
                             'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf'},
@@ -60,8 +60,9 @@ major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', '
 # Class which stores and maintains the lexicon
 class Lexicon:
     def __init__(self):
-        self.lexical_entries = dict()
-        self.compose_lexicon()
+        self.lexical_entries = dict()   #   The lexicon is a dictionary
+        self.compose_lexicon()          #   Creates the runtime lexicon by combining the lexicon and
+                                        #   the lexical redundancy rules
 
     # Composes the lexicon from the list of words and lexical redundancy rules
     def compose_lexicon(self):
@@ -71,6 +72,7 @@ class Lexicon:
                 if trigger_feature in lexicon[lex]:
                     self.lexical_entries[lex] = self.lexical_entries[lex] | lexical_redundancy_rules[trigger_feature]
 
+    # Returns a lexical entry on the basis of the key [name]
     def retrieve_lexical_item(self, name):
         return self.lexical_entries[name]
 
@@ -120,11 +122,13 @@ class PhraseStructure:
         return Y
 
     # Zero-level categories are phrase structure objects with less that two daughter constituents
-    # or they are marked as zero-level objects
+    # or they are marked as zero-level objects; these two are still kept separate since the
+    # latter is currently an independent stipulation
     def zero_level(X):
         return X.zero or X.terminal()
 
-    # Terminal elements do not have two daughter constituents
+    # Terminal elements do not have daughter constituents
+    # Note: a constituent can be None, hence the search
     def terminal(X):
         for x in X.const:
             if x:
@@ -133,18 +137,18 @@ class PhraseStructure:
 
     # Preconditions for Merge
     def MergePreconditions(X, Y):
-        if X.zero_level():
+        if X.zero_level():                                  #   Test if X selects Y
             return X.complement_subcategorization(Y)
         elif Y.zero_level():
-            return Y.complement_subcategorization(None)
+            return Y.complement_subcategorization(None)     #   Test if Y requires a complement
         else:
-            return Y.head().specifier_subcategorization(X)
+            return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
 
     # Standard naked Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
-    # Merge with head and phrasal repair functions
+    # Merge, with head and phrasal repair functions
     # Assumes that Move is part of Merge and derives the relevant
     # constructions without countercyclic operations
     def Merge_(X, Y):
@@ -172,6 +176,7 @@ class PhraseStructure:
                     target = H.complement().head().specifier()
                 elif H.complement().head().complement() and not H.complement().head().complement().silent:
                     target = H.complement().head().complement()
+            # Copy the target and create a chain-index for better readability
             if target:
                 target.babtize_chain()
                 X = target.chaincopy().Merge(X)
@@ -188,8 +193,8 @@ class PhraseStructure:
 
     # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
     def Adjoin_(X, Y):
-        X.mother = Y
-        Y.adjuncts.add(X)
+        X.mother = Y            #   This is the actual operation
+        Y.adjuncts.add(X)       #   For bookkeeping
         return {X, Y}
 
     # Preconditions for adjunct Merge
@@ -207,7 +212,7 @@ class PhraseStructure:
         x = X
         while x:
             if x.zero_level():                          # From heads the search continues into complements
-                x = x.complement()                      #
+                x = x.complement()
             else:                                       # For complex constituents...
                 for c in x.const:                       # examine both constituents and
                     if feature in c.head().features:    # return a constituent with the target feature, otherwise...
@@ -231,22 +236,24 @@ class PhraseStructure:
             return X.sister()
 
     # Calculates the head of any phrase structure object X ("labelling algorithm")
+    # Returns the most prominent zero-level category inside X
     def head(X):
-        for x in (X,) + X.const:
-            if x and x.zero_level():
+        for x in (X,) + X.const:            #   Order is from left to right
+            if x and x.zero_level():        #   Returns the first zero-level object
                 return x
-        return x.head()
+        return x.head()                     #   Recursion
 
     # Verifies (recursively) that the configuration satisfies complement and
-    # specifier subcategorization
+    # specifier subcategorization; only zero-level categories have subcategorization
+    # requirements
     def subcategorization(X):
         if X.zero_level():
             return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization()
         else:
-            return X.const[0].subcategorization() and X.const[1].subcategorization()
+            return X.const[0].subcategorization() and X.const[1].subcategorization()    #   Recursion
 
     # Complement subcategorization under [X Y]
-    # Returns False is subcategorization conditions are not met
+    # Returns False if subcategorization conditions are not met
     def complement_subcategorization(X, Y):
         comps = {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
         if comps and not (Y and Y.head().features & comps):
@@ -284,19 +291,22 @@ class PhraseStructure:
     # involved in the implementation of the PF-spellout mapping
     def linearize(X):
         linearized_output_str = ''
+        # Linearization of left adjuncts
         for x in (x for x in X.adjuncts if x.linearizes_left()):
             linearized_output_str += x.linearize()
+        # Linearization of regular constituents
         if not X.silent:
             if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
             else:
                 for x in X.const:
                     linearized_output_str += x.linearize()
+        # Linearization of right adjuncts
         for x in (x for x in X.adjuncts if x.linearizes_right()):
             linearized_output_str += x.linearize()
         return linearized_output_str
 
-    # Spellout algorithm for words
+    # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
     def linearize_word(X, word_str):
         if X.terminal():
             if word_str:
@@ -329,7 +339,7 @@ class PhraseStructure:
     def linearizes_right(X):
         return 'λ:R' in X.head().features
 
-    # Definition for adjoinability
+    # Definition for adjoinability and returns the adjunction host
     def adjoinable(X):
         for f in X.features:
             if f.startswith('α:'):
@@ -373,18 +383,18 @@ class PhraseStructure:
 
 #
 # Model of the speaker which constitutes the executive layer
-# In more realistic models the speaker models are language-specific
+# In more realistic models the speaker models must be language-specific
 #
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
         self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge'),
                                               (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 'Adjoin')]
-        self.n_accepted = 0                                          # Counts the number of derivations
-        self.n_steps = 0                                                # NUmber of derivational steps
-        self.output_data = set()                                        # Stores grammatical output data from the model
-        self.lexicon = Lexicon()                                        # Add lexicon
-        self.log_file = None                                            # Log file
+        self.n_accepted = 0         # Counts the number of derivations
+        self.n_steps = 0            # Number of derivational steps
+        self.output_data = set()    # Stores grammatical output data from the model
+        self.lexicon = Lexicon()    # Lexicon
+        self.log_file = None        # Log file
 
     # Retrieves lexical items from the lexicon and wraps them into zero-level phrase structure
     # objects
@@ -392,7 +402,7 @@ class SpeakerModel:
         ps = PhraseStructure()
         ps.features = self.lexicon.retrieve_lexical_item(name)  # Retrieves lexical features from the lexicon
         ps.phon = name                                          # Name for identification and easy recognition
-        ps.zero = True
+        ps.zero = True                                          # True = zero-level category
         return ps
 
     # Wrapper function for the derivational search function
@@ -405,16 +415,16 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if self.derivation_is_complete(sWM):                                            #   Only one phrase structure object in working memory
-            self.process_final_output(sWM)                                              #   Terminate processing and evaluate solution
+        if self.derivation_is_complete(sWM):    #   Only one phrase structure object in working memory
+            self.process_final_output(sWM)      #   Terminate processing and evaluate solution
         else:
-            for Preconditions, OP, name in self.external_syntactic_operations:          #   Examine all syntactic operations OP
+            for Preconditions, OP, name in self.external_syntactic_operations:      #   Examine all syntactic operations OP
                 for X, Y in itertools.permutations(sWM, 2):
                     if not X.mother and not Y.mother and Preconditions(X, Y):
-                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'  # Add line to logging report
+                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'     # Add line to logging report
                         new_sWM = {x for x in sWM if x not in {X, Y}} | OP(X.ccopy(), Y.ccopy())      #   Populate syntactic working memory
-                        self.consume_resource(new_sWM, sWM)                             #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)                      #   Continue derivation, recursive branching
+                        self.consume_resource(new_sWM, sWM)                         #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)                  #   Continue derivation, recursive branching
 
     @staticmethod
     def derivation_is_complete(sWM):

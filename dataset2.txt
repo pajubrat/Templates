@@ -1,35 +1,10 @@
 
-
 #
 # Example dataset for Template2
 #
 
 # 1
 Numeration=a,b,c,d
-a b c d
-a c b d
-a d c b
-c b a d
-c a d b
-c b d a
-a d b c
-d a c b
-b c d a
-d b c a
-a c d b
-d b a c
-b c a d
-d a b c
-c d b a
-d c a b
-b d c a
-b a d c
-b a c d
-c d a b
-d c b a
-c a b d
-b d a c
-a b d c
 
 # 2
 Numeration=the,man,bite,the,dog
@@ -133,3 +108,12 @@ the city bark in the dog
 
 # 22 (Right-adjunction and wh-extraction)
 Numeration=C(wh),the,dog,did,bark,in,which,city
+
+# 23 (Worst case simulations)
+#Numeration=a
+#Numeration=a,b
+#Numeration=a,b,c
+#Numeration=a,b,c,d
+#Numeration=a,b,c,d,a
+#Numeration=a,b,c,d,a,b
+#Numeration=a,b,c,d,a,b,c
