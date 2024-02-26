@@ -98,9 +98,17 @@ class PhraseStructure:
         if Y:
             Y.mother = self
 
-    def ccopy(X):
+    # Definition for left constituent (abstraction)
+    def left(self):
+        return self.const[0]
+
+    # Definition for right constituent (abstraction)
+    def right(self):
+        return self.const[1]
+
+    def copy(X):
         if not X.terminal():
-            Y = PhraseStructure(X.const[0].ccopy(), X.const[1].ccopy())
+            Y = PhraseStructure(X.left().copy(), X.right().copy())
         else:
             Y = PhraseStructure()
         Y.copy_properties(X)
@@ -117,7 +125,7 @@ class PhraseStructure:
     # Copying operation with phonological silencing
     # Implement chain numbers (if needed) inside this function
     def chaincopy(X):
-        Y = X.ccopy()
+        Y = X.copy()
         X.silent = True
         return Y
 
@@ -135,24 +143,9 @@ class PhraseStructure:
                 return False
         return True
 
-    # Preconditions for Merge
-    def MergePreconditions(X, Y):
-        if X.zero_level():                                  #   Test if X selects Y
-            return X.complement_subcategorization(Y)
-        elif Y.zero_level():
-            return Y.complement_subcategorization(None)     #   Test if Y requires a complement
-        else:
-            return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
-
     # Standard naked Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
-
-    # Merge, with head and phrasal repair functions
-    # Assumes that Move is part of Merge and derives the relevant
-    # constructions without countercyclic operations
-    def Merge_(X, Y):
-        return {X.HeadRepair(Y).Merge(Y).PhrasalRepair()}
 
     # Head repair for X before Merge
     def HeadRepair(X, Y):
@@ -191,16 +184,6 @@ class PhraseStructure:
         Z.adjuncts = Y.adjuncts
         return Z
 
-    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
-    def Adjoin_(X, Y):
-        X.mother = Y            #   This is the actual operation
-        Y.adjuncts.add(X)       #   For bookkeeping
-        return {X, Y}
-
-    # Preconditions for adjunct Merge
-    def AdjunctionPreconditions(X, Y):
-        return X.head().adjoinable() and X.head().adjoinable() in Y.head().features
-
     def babtize_chain(X):
         if X.chain_index == 0:
             PhraseStructure.chain_index += 1
@@ -227,12 +210,12 @@ class PhraseStructure:
 
     # Determines whether X has a right sister and return that constituent if present
     def complement(X):
-        if X.sister() and X.mother.const[0] == X:
+        if X.sister() and X.mother.left() == X:
             return X.sister()
 
     # Left sister
     def left_sister(X):
-        if X.sister() and X.mother.const[1] == X:
+        if X.sister() and X.mother.right() == X:
             return X.sister()
 
     # Calculates the head of any phrase structure object X ("labelling algorithm")
@@ -250,7 +233,7 @@ class PhraseStructure:
         if X.zero_level():
             return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization()
         else:
-            return X.const[0].subcategorization() and X.const[1].subcategorization()    #   Recursion
+            return X.left().subcategorization() and X.right().subcategorization()    #   Recursion
 
     # Complement subcategorization under [X Y]
     # Returns False if subcategorization conditions are not met
@@ -339,6 +322,9 @@ class PhraseStructure:
     def linearizes_right(X):
         return 'λ:R' in X.head().features
 
+    def isRoot(X):
+        return not X.mother
+
     # Definition for adjoinability and returns the adjunction host
     def adjoinable(X):
         for f in X.features:
@@ -367,6 +353,7 @@ class PhraseStructure:
                 bracket = ('[', ']')
             str += bracket[0]
             if not X.zero_level():
+                pass
                 str += f'_{X.head().lexical_category()}P '  #   Print information about heads and labelling
             for const in X.const:
                 str += f'{const} '
@@ -388,8 +375,8 @@ class PhraseStructure:
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
-        self.external_syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 'Merge'),
-                                              (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 'Adjoin')]
+        self.syntactic_operations = [(self.MergePreconditions, self.Merge_, 2, 'Merge'),
+                                     (self.AdjunctionPreconditions, self.Adjoin_, 2, 'Adjoin')]
         self.n_accepted = 0         # Counts the number of derivations
         self.n_steps = 0            # Number of derivational steps
         self.output_data = set()    # Stores grammatical output data from the model
@@ -415,20 +402,51 @@ class SpeakerModel:
 
     # Derivational search function
     def derivational_search_function(self, sWM):
-        if self.derivation_is_complete(sWM):    #   Only one phrase structure object in working memory
-            self.process_final_output(sWM)      #   Terminate processing and evaluate solution
+        if self.derivation_is_complete(sWM):                                                                #   Only one phrase structure object in working memory
+            self.process_final_output(sWM)                                                                  #   Terminate processing and evaluate solution
         else:
-            for Preconditions, OP, name in self.external_syntactic_operations:      #   Examine all syntactic operations OP
-                for X, Y in itertools.permutations(sWM, 2):
-                    if not X.mother and not Y.mother and Preconditions(X, Y):
-                        PhraseStructure.logging_report += f'\t{name}({X}, {Y})'     # Add line to logging report
-                        new_sWM = {x for x in sWM if x not in {X, Y}} | OP(X.ccopy(), Y.ccopy())      #   Populate syntactic working memory
-                        self.consume_resource(new_sWM, sWM)                         #   Record resource consumption and write log entries
-                        self.derivational_search_function(new_sWM)                  #   Continue derivation, recursive branching
+            for Preconditions, OP, n, name in self.syntactic_operations:                                    #   Examine all syntactic operations OP
+                for SO in itertools.permutations(sWM, n):                                                   #   All n-tuples of objects in sWM
+                    if Preconditions(SO):                                                                   #   Blocks illicit derivations
+                        PhraseStructure.logging_report += f'\t{name}({self.print_lst(SO)})'                 #   Add line to logging report
+                        new_sWM = {x for x in sWM if x not in set(SO)} | OP(tuple(x.copy() for x in SO))    #   Update sWM
+                        self.consume_resource(new_sWM, sWM)                                                 #   Record resource consumption and write log entries
+                        self.derivational_search_function(new_sWM)                                          #   Continue derivation, recursive branching
+
+    # Preconditions for Merge
+    @staticmethod
+    def MergePreconditions(SO):
+        X, Y = SO
+        if X.zero_level():                                  #   Test if X selects Y
+            return X.complement_subcategorization(Y)
+        elif X.zero_level():
+            return Y.complement_subcategorization(None)     #   Test if Y requires a complement
+        else:
+            return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
+
+    # Merge, with head and phrasal repair functions
+    # Assumes that Move is part of Merge and derives the relevant
+    # constructions without countercyclic operations
+    @staticmethod
+    def Merge_(SO):
+        return {SO[0].HeadRepair(SO[1]).Merge(SO[1]).PhrasalRepair()}
+
+    # Preconditions for adjunct Merge
+    @staticmethod
+    def AdjunctionPreconditions(SO):
+        return SO[0].head().adjoinable() and SO[0].head().adjoinable() in SO[1].head().features
+
+    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
+    @staticmethod
+    def Adjoin_(SO):
+        X, Y = SO
+        X.mother = Y           #   This is the actual operation
+        Y.adjuncts.add(X)      #   For bookkeeping
+        return {X,Y}
 
     @staticmethod
     def derivation_is_complete(sWM):
-        return len({X for X in sWM if not X.mother}) == 1
+        return len({X for X in sWM if X.isRoot()}) == 1
 
     @staticmethod
     def root_structure(sWM):
@@ -440,9 +458,9 @@ class SpeakerModel:
     def consume_resource(self, new_sWM, old_sWM):
         self.n_steps += 1
         self.log_file.write(f'{self.n_steps}.\n\n')
-        self.log_file.write(f'\tsWM: {self.print_constituent_lst(old_sWM)}\n')
+        self.log_file.write(f'\t{self.print_constituent_lst(old_sWM)}\n')
         self.log_file.write(f'{PhraseStructure.logging_report}')
-        self.log_file.write(f'\n\tsWM´: {self.print_constituent_lst(new_sWM)}\n\n')
+        self.log_file.write(f'\n\t= {self.print_constituent_lst(new_sWM)}\n\n')
         PhraseStructure.logging_report = ''
 
     # Processes final output
@@ -462,24 +480,24 @@ class SpeakerModel:
         self.output_data.add(output_sentence.strip())
         self.log_file.write('\n\n')
 
+    def print_lst(self, lst):
+        str = ''
+        for i, ps in enumerate(lst):
+            if ps.terminal():
+                str += f'{ps}°'
+            else:
+                str += f'{ps}'
+            if i < len(lst) - 1:
+                str += ', '
+        return str
+
     # To help understand the output
     def print_constituent_lst(self, sWM):
-        def print_lst(lst):
-            str = ''
-            for i, ps in enumerate(lst):
-                if ps.terminal():
-                    str += f'{ps}°'
-                else:
-                    str += f'{ps}'
-                if i < len(lst) - 1:
-                    str += ', '
-            return str
-
         aWM = [x for x in sWM if not x.mother]
         iWM = [x for x in sWM if x.mother]
-        str = f'{print_lst(aWM)}'
+        str = f'{self.print_lst(aWM)}'
         if iWM:
-            str += f' + {{ {print_lst(iWM)} }}'
+            str += f' + {{ {self.print_lst(iWM)} }}'
         return str
 
 #
@@ -542,6 +560,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                   #   Run the study

@@ -1,0 +1,12 @@
+
+Numeration=a,b,c
+
+END
+
+Numeration=a,b,c
+
+Numeration=a,b,c,d
+
+Numeration=a,b,c,d,a
+
+Numeration=a,b,c,d,a,b
