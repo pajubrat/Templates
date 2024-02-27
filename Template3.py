@@ -57,6 +57,9 @@ lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', 
 # Major lexical categories assumed in this grammar
 major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd']
 
+def tcopy(SO):
+    return tuple(x.copy() for x in SO)
+
 # Class which stores and maintains the lexicon
 class Lexicon:
     def __init__(self):
@@ -143,12 +146,28 @@ class PhraseStructure:
                 return False
         return True
 
-    # Standard naked Merge
+    # Standard bare Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
+    # Merge, with head and phrasal repair functions
+    # Assumes that Move is part of Merge and derives the relevant
+    # constructions without countercyclic operations
+    def Merge_(X, Y):
+        return {X.HeadMovement(Y).Merge(Y).PhrasalMovement()}
+
+    # Preconditions for Merge
+    def MergePreconditions(X, Y):
+        if X.isRoot() and Y.isRoot():
+            if X.zero_level():                                  #   Test if X selects Y
+                return X.complement_subcategorization(Y)
+            elif Y.zero_level():
+                return Y.complement_subcategorization(None)     #   Test if Y requires a complement
+            else:
+                return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
+
     # Head repair for X before Merge
-    def HeadRepair(X, Y):
+    def HeadMovement(X, Y):
         if X.zero_level() and X.bound_morpheme() and not Y.head().silent:           #   Preconditions
             PhraseStructure.logging_report += f'\tHead Chain ({X}, {Y.head()})\n'
             X = Y.head().chaincopy().HeadMerge_(X)                                  #   Operation
@@ -156,7 +175,7 @@ class PhraseStructure:
 
     # Phrasal repair for X before Merge
     # We separate A- and A-bar chains explicitly
-    def PhrasalRepair(X):
+    def PhrasalMovement(X):
         H = X.head()
         target = None
         if H.complement():
@@ -183,6 +202,16 @@ class PhraseStructure:
         Z.features = Y.features
         Z.adjuncts = Y.adjuncts
         return Z
+
+    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
+    def Adjoin_(X, Y):
+        X.mother = Y           #   This is the actual operation
+        Y.adjuncts.add(X)      #   For bookkeeping
+        return {X, Y}
+
+    # Preconditions for adjunct Merge
+    def AdjunctionPreconditions(X, Y):
+        return X.isRoot() and Y.isRoot() and X.head().adjoinable() and X.head().adjoinable() in Y.head().features
 
     def babtize_chain(X):
         if X.chain_index == 0:
@@ -353,7 +382,6 @@ class PhraseStructure:
                 bracket = ('[', ']')
             str += bracket[0]
             if not X.zero_level():
-                pass
                 str += f'_{X.head().lexical_category()}P '  #   Print information about heads and labelling
             for const in X.const:
                 str += f'{const} '
@@ -375,8 +403,8 @@ class PhraseStructure:
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
-        self.syntactic_operations = [(self.MergePreconditions, self.Merge_, 2, 'Merge'),
-                                     (self.AdjunctionPreconditions, self.Adjoin_, 2, 'Adjoin')]
+        self.syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 2, 'Merge'),
+                                     (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 2, 'Adjoin')]
         self.n_accepted = 0         # Counts the number of derivations
         self.n_steps = 0            # Number of derivational steps
         self.output_data = set()    # Stores grammatical output data from the model
@@ -407,42 +435,12 @@ class SpeakerModel:
         else:
             for Preconditions, OP, n, name in self.syntactic_operations:                                    #   Examine all syntactic operations OP
                 for SO in itertools.permutations(sWM, n):                                                   #   All n-tuples of objects in sWM
-                    if Preconditions(SO):                                                                   #   Blocks illicit derivations
+                    if Preconditions(*SO):                                                                  #   Blocks illicit derivations
                         PhraseStructure.logging_report += f'\t{name}({self.print_lst(SO)})'                 #   Add line to logging report
-                        new_sWM = {x for x in sWM if x not in set(SO)} | OP(tuple(x.copy() for x in SO))    #   Update sWM
+                        new_sWM = {x for x in sWM if x not in set(SO)} | OP(*tcopy(SO))                     #   Update sWM
                         self.consume_resource(new_sWM, sWM)                                                 #   Record resource consumption and write log entries
                         self.derivational_search_function(new_sWM)                                          #   Continue derivation, recursive branching
 
-    # Preconditions for Merge
-    @staticmethod
-    def MergePreconditions(SO):
-        X, Y = SO
-        if X.zero_level():                                  #   Test if X selects Y
-            return X.complement_subcategorization(Y)
-        elif X.zero_level():
-            return Y.complement_subcategorization(None)     #   Test if Y requires a complement
-        else:
-            return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
-
-    # Merge, with head and phrasal repair functions
-    # Assumes that Move is part of Merge and derives the relevant
-    # constructions without countercyclic operations
-    @staticmethod
-    def Merge_(SO):
-        return {SO[0].HeadRepair(SO[1]).Merge(SO[1]).PhrasalRepair()}
-
-    # Preconditions for adjunct Merge
-    @staticmethod
-    def AdjunctionPreconditions(SO):
-        return SO[0].head().adjoinable() and SO[0].head().adjoinable() in SO[1].head().features
-
-    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
-    @staticmethod
-    def Adjoin_(SO):
-        X, Y = SO
-        X.mother = Y           #   This is the actual operation
-        Y.adjuncts.add(X)      #   For bookkeeping
-        return {X,Y}
 
     @staticmethod
     def derivation_is_complete(sWM):
@@ -560,6 +558,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
-run_study(ld, sm)                   #   Run the study
+run_study(ld, sm)                   #   Runs the study
