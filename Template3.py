@@ -1,3 +1,4 @@
+
 #
 # Starting point template for derivational search function
 # for asymmetric binary-branching bare phrase structure
@@ -17,25 +18,29 @@ import itertools
 # WH: Wh-operator feature
 # SCOPE: Scope marking element for operators
 # + major lexical categories
-lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
+lexicon = {'a': {'a', 'f1', 'f2'},
+           'b': {'b', 'f3', 'f4'},
+           'c': {'c', 'f5', 'f6'},
+           'd': {'d', 'f7', 'f8'},
            'the': {'D'},
-           'which': {'D', 'WH'},
            'dog': {'N'},
+           'bark': {'V', 'V/INTR'},
+           'ing': {'N', '!wCOMP:V', 'PC:#X'},
+           'which': {'D', 'WH'},
            'man': {'N'},
            'angry': {'A', 'α:N', 'λ:L'},
            'frequently': {'Adv', 'α:V', 'λ:R'},
            'city': {'N'},
            'from': {'P'},
            'in': {'P', 'α:V', },
-           'T': {'T', '#X', 'EPP', '!SPEC:D'},
-           'T*': {'T', '#X', 'T'},
+           'T': {'T', 'PC:#X', 'EPP', '!SPEC:D', '!wCOMP:V'},
+           'T*': {'T', 'PC:#X', 'T', '!wCOMP:V'},
            'did': {'T', 'EPP'},
            'was': {'T', 'EPP'},
            'C': {'C'},
-           'C(wh)': {'C', '#X', 'WH', 'SCOPE', 'SPEC:WH'},
-           'v': {'v', '#X'},
-           'v*': {'V', 'EPP', '#X', '!COMP:V', '-SPEC:v'},
-           'bark': {'V', 'V/INTR', '-COMP:T/inf'},
+           'C(wh)': {'C', 'PC:#X', 'WH', 'SCOPE', 'SPEC:WH', '!wCOMP:T'},
+           'v': {'v', 'PC:#X', '!wCOMP:V'},
+           'v*': {'V', 'EPP', 'PC:#X', '!COMP:V', '-SPEC:v'},
            'that': {'C'},
            'believe': {'V', '!COMP:C'},
            'seem': {'V', 'EPP', '!SPEC:D', '!COMP:T/inf', 'RAISING'},
@@ -50,7 +55,7 @@ lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', 
                             'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
                             'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
                             'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '!wCOMP:V'},
                             'V/INTR': {'-COMP:D', '-COMP:N', '!SPEC:D', '-COMP:T', '-SPEC:T/inf'}
                             }
 
@@ -159,18 +164,20 @@ class PhraseStructure:
     # Preconditions for Merge
     def MergePreconditions(X, Y):
         if X.isRoot() and Y.isRoot():
-            if X.zero_level():                                  #   Test if X selects Y
+            if Y.terminal() and Y.obligatory_wcomplement_features():
+                return False
+            if X.zero_level():                                                              #   Test if X selects Y
                 return X.complement_subcategorization(Y)
             elif Y.zero_level():
-                return Y.complement_subcategorization(None)     #   Test if Y requires a complement
+                return Y.complement_subcategorization(None)                                 #   Test if Y requires a complement
             else:
-                return Y.head().specifier_subcategorization(X)  #   Test specifier subcategorization
+                return Y.head().specifier_subcategorization(X)                              #   Test specifier subcategorization
 
     # Head repair for X before Merge
     def HeadMovement(X, Y):
         if X.zero_level() and X.bound_morpheme() and not Y.head().silent:           #   Preconditions
             PhraseStructure.logging_report += f'\tHead Chain ({X}, {Y.head()})\n'
-            X = Y.head().chaincopy().HeadMerge_(X)                                  #   Operation
+            X = next(iter(Y.head().chaincopy().HeadMerge_(X)))                      #   Operation
         return X
 
     # Phrasal repair for X before Merge
@@ -201,7 +208,26 @@ class PhraseStructure:
         Z.zero = True
         Z.features = Y.features
         Z.adjuncts = Y.adjuncts
-        return Z
+        return {Z}
+
+    # Preconditions for Head Merge (X Y)
+    def HeadMergePreconditions(X, Y):
+        return X.zero_level() and Y.zero_level() and Y.w_selects(X)
+
+    # Word-internal selection between X and Y under (X Y), where
+    # Y selects for X
+    def w_selects(Y, X):
+        return Y.leftmost().obligatory_wcomplement_features() and Y.leftmost().obligatory_wcomplement_features() <= X.rightmost().features
+
+    def leftmost(X):
+        while X.left():
+            X = X.left()
+        return X
+
+    def rightmost(X):
+        while X.right():
+            X = X.right()
+        return X
 
     # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
     def Adjoin_(X, Y):
@@ -260,9 +286,26 @@ class PhraseStructure:
     # requirements
     def subcategorization(X):
         if X.zero_level():
-            return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization()
+            return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization() and X.w_subcategorization()
         else:
             return X.left().subcategorization() and X.right().subcategorization()    #   Recursion
+
+    # Word-internal subcategorization that models morphotactic/morphological regularities
+    # The recursive function looks for violations, otherwise returns True
+    def w_subcategorization(X):
+        if X.terminal():
+            if X.obligatory_wcomplement_features():
+                return False
+        if X.left() and X.right():
+            if not X.right().w_selects(X.left()):
+                return False
+        if X.left() and not X.left().terminal():
+            if not X.left().w_subcategorization():
+                return False
+        if X.right() and not X.right().terminal():
+            if not X.right().w_subcategorization():
+                return False
+        return True
 
     # Complement subcategorization under [X Y]
     # Returns False if subcategorization conditions are not met
@@ -331,7 +374,7 @@ class PhraseStructure:
 
     # Definition for bound morpheme
     def bound_morpheme(X):
-        return '#X' in X.features
+        return 'PC:#X' in X.features
 
     # Definition for EPP
     def EPP(X):
@@ -353,6 +396,9 @@ class PhraseStructure:
 
     def isRoot(X):
         return not X.mother
+
+    def obligatory_wcomplement_features(X):
+        return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
     # Definition for adjoinability and returns the adjunction host
     def adjoinable(X):
@@ -404,6 +450,7 @@ class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
         self.syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 2, 'Merge'),
+                                     (PhraseStructure.HeadMergePreconditions, PhraseStructure.HeadMerge_, 2, 'Head Merge'),
                                      (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 2, 'Adjoin')]
         self.n_accepted = 0         # Counts the number of derivations
         self.n_steps = 0            # Number of derivational steps
@@ -558,6 +605,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                   #   Runs the study

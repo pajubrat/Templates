@@ -1,5 +1,17 @@
 
 Numeration=a,b,c
+a b c
+c b a
+c a b
+a c b
+b a c
+b c a
+
+Numeration=the,bark,ing
+the bark#ing
+
+Numeration=the,bark,ing,bark
+the bark#ing bark
 
 END
 
@@ -10,3 +22,9 @@ Numeration=a,b,c,d
 Numeration=a,b,c,d,a
 
 Numeration=a,b,c,d,a,b
+
+Numeration=the,bark,ing
+the bark#ing
+
+Numeration=the,bark,ing,bark
+the bark#ing bark
