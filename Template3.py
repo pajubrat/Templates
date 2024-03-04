@@ -25,7 +25,9 @@ lexicon = {'a': {'a', 'f1', 'f2'},
            'the': {'D'},
            'dog': {'N'},
            'bark': {'V', 'V/INTR'},
+           'barks': {'V', 'V/INTR'},
            'ing': {'N', '!wCOMP:V', 'PC:#X'},
+           'bites': {'V', '!COMP:D', '!SPEC:D'},
            'which': {'D', 'WH'},
            'man': {'N'},
            'angry': {'A', 'α:N', 'λ:L'},
@@ -49,7 +51,7 @@ lexicon = {'a': {'a', 'f1', 'f2'},
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A'},
-                            'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D'},
+                            'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D', '-COMP:Adv', '-COMP:A'},
                             'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
                             'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
                             'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
@@ -80,11 +82,15 @@ class Lexicon:
                 if trigger_feature in lexicon[lex]:
                     self.lexical_entries[lex] = self.lexical_entries[lex] | lexical_redundancy_rules[trigger_feature]
 
-    # Returns a lexical entry on the basis of the key [name]
-    def retrieve_lexical_item(self, name):
-        return self.lexical_entries[name]
+    # Retrieves lexical items from the lexicon and wraps them into zero-level phrase structure
+    # objects
+    def retrieve(self, name):
+        X0 = PhraseStructure()
+        X0.features = self.lexical_entries[name]        # Retrieves lexical features from the lexicon
+        X0.phon = name                                  # Name for identification and easy recognition
+        X0.zero = True                                  # True = zero-level category
+        return X0
 
-#
 # Asymmetric binary-branching phrase structure formalism
 # together with several dependencies
 #
@@ -107,12 +113,18 @@ class PhraseStructure:
             Y.mother = self
 
     # Definition for left constituent (abstraction)
-    def left(self):
-        return self.const[0]
+    def left(X):
+        return X.const[0]
 
     # Definition for right constituent (abstraction)
-    def right(self):
-        return self.const[1]
+    def right(X):
+        return X.const[1]
+
+    def isLeft(X):
+        return X.sister() and X.mother.left() == X
+
+    def isRight(X):
+        return X.sister() and X.mother.right() == X
 
     def copy(X):
         if not X.terminal():
@@ -265,7 +277,7 @@ class PhraseStructure:
 
     # Determines whether X has a right sister and return that constituent if present
     def complement(X):
-        if X.sister() and X.mother.left() == X:
+        if X.zero_level() and X.isLeft():
             return X.sister()
 
     # Left sister
@@ -286,9 +298,10 @@ class PhraseStructure:
     # requirements
     def subcategorization(X):
         if X.zero_level():
-            return X.complement_subcategorization(X.complement()) and X.specifier_subcategorization() and X.w_subcategorization()
-        else:
-            return X.left().subcategorization() and X.right().subcategorization()    #   Recursion
+            return X.complement_subcategorization(X.complement()) and \
+                   X.specifier_subcategorization() and \
+                   X.w_subcategorization()
+        return X.left().subcategorization() and X.right().subcategorization()    #   Recursion
 
     # Word-internal subcategorization that models morphotactic/morphological regularities
     # The recursive function looks for violations, otherwise returns True
@@ -308,37 +321,30 @@ class PhraseStructure:
         return True
 
     # Complement subcategorization under [X Y]
-    # Returns False if subcategorization conditions are not met
     def complement_subcategorization(X, Y):
-        comps = {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
-        if comps and not (Y and Y.head().features & comps):
-            return False
-        noncomps = {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
-        if noncomps and (Y and Y.head().features & noncomps):
-            return False
-        return True
+        if not Y:
+            return not X.positive_comp_selection()
+        return (X.positive_comp_selection() <= Y.head().features) and \
+               not (X.negative_comp_selection() & Y.head().features)
 
     # Specifier subcategorization under [_YP XP YP]
     # Returns False if subcategorization conditions are not met
-    def specifier_subcategorization(X, Y=None):
-        if not Y:
-            Y = X.specifier()
-        specs = {f.split(':')[1] for f in X.features if f.startswith('!SPEC')}
-        if specs and not (Y and Y.head().features & specs):
-            return False
-        nonspecs = {f.split(':')[1] for f in X.features if f.startswith('-SPEC')}
-        if nonspecs and (Y and Y.head().features & nonspecs):
-            return False
-        return True
+    def specifier_subcategorization(X, Spec=None):
+        if not Spec:
+            if not X.specifier():
+                return not X.positive_spec_selection()
+            Spec = X.specifier()
+        return X.positive_spec_selection() <= Spec.head().features and \
+               not (X.negative_spec_selection() & Spec.head().features)
 
     # A generalized definition for the notion of specifier based on
     # head algorithm, allows specifier stacking and includes
     # left-adjoined phrases (if adjunction is part of the grammar)
     def specifier(X):
         x = X.head()
-        while x and x.head() == X.head():
-            if x.left_sister() and not x.left_sister().zero_level():
-                return x.left_sister()
+        while x and x.mother and x.mother.head() == X:
+            if x.mother.left() != X:
+                return x.mother.left()
             x = x.mother
 
     # Maps phrase structure objects into linear lists of words
@@ -400,6 +406,18 @@ class PhraseStructure:
     def obligatory_wcomplement_features(X):
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
+    def positive_spec_selection(X):
+        return {f.split(':')[1] for f in X.features if f.startswith('!SPEC')}
+
+    def negative_spec_selection(X):
+        return {f.split(':')[1] for f in X.features if f.startswith('-SPEC')}
+
+    def positive_comp_selection(X):
+        return {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
+
+    def negative_comp_selection(X):
+        return {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
+
     # Definition for adjoinability and returns the adjunction host
     def adjoinable(X):
         for f in X.features:
@@ -458,22 +476,13 @@ class SpeakerModel:
         self.lexicon = Lexicon()    # Lexicon
         self.log_file = None        # Log file
 
-    # Retrieves lexical items from the lexicon and wraps them into zero-level phrase structure
-    # objects
-    def LexicalRetrieval(self, name):
-        ps = PhraseStructure()
-        ps.features = self.lexicon.retrieve_lexical_item(name)  # Retrieves lexical features from the lexicon
-        ps.phon = name                                          # Name for identification and easy recognition
-        ps.zero = True                                          # True = zero-level category
-        return ps
-
     # Wrapper function for the derivational search function
     # Performs initialization and maps the input into numeration
     def derive(self, numeration):
         self.n_steps = 0
         self.output_data = set()
         self.n_accepted = 0
-        self.derivational_search_function([self.LexicalRetrieval(item) for item in numeration])
+        self.derivational_search_function([self.lexicon.retrieve(item) for item in numeration])
 
     # Derivational search function
     def derivational_search_function(self, sWM):
@@ -605,6 +614,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                   #   Runs the study
