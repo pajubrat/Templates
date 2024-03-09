@@ -26,8 +26,10 @@ lexicon = {'a': {'a', 'f1', 'f2'},
            'dog': {'N'},
            'bark': {'V', 'V/INTR'},
            'barks': {'V', 'V/INTR'},
-           'ing': {'N', '!wCOMP:V', 'PC:#X'},
+           'ing': {'N', '!wCOMP:V', 'PC:#X', 'ε'},
            'bites': {'V', '!COMP:D', '!SPEC:D'},
+           'bite': {'V', '!COMP:D'},
+           'bite*': {'V', 'V/TR'},
            'which': {'D', 'WH'},
            'man': {'N'},
            'angry': {'A', 'α:N', 'λ:L'},
@@ -35,30 +37,32 @@ lexicon = {'a': {'a', 'f1', 'f2'},
            'city': {'N'},
            'from': {'P'},
            'in': {'P', 'α:V', },
-           'T': {'T', 'PC:#X', 'EPP', '!SPEC:D', '!wCOMP:V'},
-           'T*': {'T', 'PC:#X', 'T', '!wCOMP:V'},
+           'ed': {'T', 'PC:#X', '!wCOMP:V', '-ε'},
+           'T': {'T', 'PC:#X', 'EPP', '!SPEC:D', '!wCOMP:V', '-ε'},
+           'T*': {'T', 'PC:#X', '!wCOMP:V', '-ε'},
            'did': {'T', 'EPP'},
+           'does': {'T'},
            'was': {'T', 'EPP'},
-           'C': {'C'},
-           'C(wh)': {'C', 'PC:#X', 'WH', 'SCOPE', 'SPEC:WH', '!wCOMP:T'},
-           'v': {'v', 'PC:#X', '!wCOMP:V'},
-           'v*': {'V', 'EPP', 'PC:#X', '!COMP:V', '-SPEC:v'},
+           'C': {'C', 'PC:#X', '!wCOMP:T', '-ε'},
+           'C(wh)': {'C', 'C(wh)', 'PC:#X', '!wCOMP:T', '-ε', 'WH', 'SCOPE'},
+           'v': {'v', 'PC:#X', '!wCOMP:V', '-ε'},
+           'v*': {'V', 'EPP', 'PC:#X', '!COMP:V', '-SPEC:v', '!wCOMP:V', '-ε'},
            'that': {'C'},
            'believe': {'V', '!COMP:C'},
            'seem': {'V', 'EPP', '!SPEC:D', '!COMP:T/inf', 'RAISING'},
-           'to': {'T/inf', '!COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'},
-           'bite': {'V', '!COMP:D'}}
+           'to': {'T/inf', '!COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'}}
 
 lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
-                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A'},
+                            'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A', '-COMP:N', '-COMP:T'},
                             'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D', '-COMP:Adv', '-COMP:A'},
                             'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
                             'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
                             'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
                             'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
-                            'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '!wCOMP:V'},
-                            'V/INTR': {'-COMP:D', '-COMP:N', '!SPEC:D', '-COMP:T', '-SPEC:T/inf'}
+                            'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-ε'},
+                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '!wCOMP:V', '-ε'},
+                            'V/INTR': {'-COMP:D', '!SPEC:D'},
+                            'V/TR': {'-SPEC:D', '!COMP:D'}
                             }
 
 # Major lexical categories assumed in this grammar
@@ -66,6 +70,12 @@ major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', '
 
 def tcopy(SO):
     return tuple(x.copy() for x in SO)
+
+def tset(X):
+    if isinstance(X, set):
+        return X
+    else:
+        return {X}
 
 # Class which stores and maintains the lexicon
 class Lexicon:
@@ -170,8 +180,8 @@ class PhraseStructure:
     # Merge, with head and phrasal repair functions
     # Assumes that Move is part of Merge and derives the relevant
     # constructions without countercyclic operations
-    def Merge_(X, Y):
-        return {X.HeadMovement(Y).Merge(Y).PhrasalMovement()}
+    def MergeComposite(X, Y):
+        return X.HeadMovement(Y).Merge(Y).PhrasalMovement()
 
     # Preconditions for Merge
     def MergePreconditions(X, Y):
@@ -187,10 +197,13 @@ class PhraseStructure:
 
     # Head repair for X before Merge
     def HeadMovement(X, Y):
-        if X.zero_level() and X.bound_morpheme() and not Y.head().silent:           #   Preconditions
-            PhraseStructure.logging_report += f'\tHead Chain ({X}, {Y.head()})\n'
-            X = next(iter(Y.head().chaincopy().HeadMerge_(X)))                      #   Operation
+        if X.HeadMovementPreconditions(Y):                                          #   Preconditions
+            PhraseStructure.logging_report += f'\n\t\t + Head chain by {X}° targeting {Y.head()}°'
+            X = Y.head().chaincopy().HeadMerge_(X)                                  #   Operation
         return X
+
+    def HeadMovementPreconditions(X, Y):
+        return X.zero_level() and X.bound_morpheme() and not X.mandateDirectHeadMerge()
 
     # Phrasal repair for X before Merge
     # We separate A- and A-bar chains explicitly
@@ -199,20 +212,26 @@ class PhraseStructure:
         target = None
         if H.complement():
             # Phrasal A-bar chains
-            if H.scope_marker() and H.operator() and H.complement().minimal_search('WH') and not H.complement().minimal_search('WH').silent:
+            if H.scope_marker() and \
+                    H.operator() and \
+                    H.complement().minimal_search('WH') and \
+                    not H.complement().minimal_search('WH').silent:
                 target = H.complement().minimal_search('WH')
             # Phrasal A-chains
-            elif H.EPP() and H.complement():
-                if H.complement().head().specifier() and not H.complement().head().specifier().silent:
-                    target = H.complement().head().specifier()
-                elif H.complement().head().complement() and not H.complement().head().complement().silent:
-                    target = H.complement().head().complement()
+            elif H.EPP():
+                target = H.target_for_A_movement()
             # Copy the target and create a chain-index for better readability
             if target:
                 target.babtize_chain()
+                PhraseStructure.logging_report += f'\n\t\t + Phrasal chain by {H}° targeting {target})'
                 X = target.chaincopy().Merge(X)
-                PhraseStructure.logging_report += f'\tChain ({H}, {target})\n'
         return X
+
+    def target_for_A_movement(X):
+        if X.complement().head().specifier() and not X.complement().head().specifier().silent:
+            return X.complement().head().specifier()
+        if X.complement().head().complement() and not X.complement().head().complement().silent:
+            return X.complement().head().complement()
 
     # Head Merge creates zero-level categories and implements feature inheritance
     def HeadMerge_(X, Y):
@@ -220,11 +239,11 @@ class PhraseStructure:
         Z.zero = True
         Z.features = Y.features
         Z.adjuncts = Y.adjuncts
-        return {Z}
+        return Z
 
     # Preconditions for Head Merge (X Y)
     def HeadMergePreconditions(X, Y):
-        return X.zero_level() and Y.zero_level() and Y.w_selects(X)
+        return X.zero_level() and Y.zero_level() and Y.w_selects(X) and not Y.blockDirectHeadMerge()
 
     # Word-internal selection between X and Y under (X Y), where
     # Y selects for X
@@ -241,15 +260,19 @@ class PhraseStructure:
             X = X.right()
         return X
 
-    # Adjunct Merge is a variation of Merge, but creates a parallel phrase structure
+    # Adjunct Merge is a variation of Merge, 
+	# but creates a parallel phrase structure
     def Adjoin_(X, Y):
-        X.mother = Y           #   This is the actual operation
-        Y.adjuncts.add(X)      #   For bookkeeping
+        X.mother = Y
+        Y.adjuncts.add(X)
         return {X, Y}
 
-    # Preconditions for adjunct Merge
+    # Preconditions for adjunction
     def AdjunctionPreconditions(X, Y):
-        return X.isRoot() and Y.isRoot() and X.head().adjoinable() and X.head().adjoinable() in Y.head().features
+        return X.isRoot() and \
+               Y.isRoot() and \
+               X.head().license_adjunction() and \
+               X.head().license_adjunction() in Y.head().features
 
     def babtize_chain(X):
         if X.chain_index == 0:
@@ -259,16 +282,15 @@ class PhraseStructure:
     # Searches for a goal for phrasal movement, feature = target feature to be searched
     # This is also the kernel for Agree/probe-goal operation
     def minimal_search(X, feature):
-        x = X
-        while x:
-            if x.zero_level():                          # From heads the search continues into complements
-                x = x.complement()
+        while X:
+            if X.zero_level():                          # From heads the search continues into complements
+                X = X.complement()
             else:                                       # For complex constituents...
-                for c in x.const:                       # examine both constituents and
+                for c in X.const:                       # examine both constituents and
                     if feature in c.head().features:    # return a constituent with the target feature, otherwise...
                         return c
-                    if c.head() == x.head():            # search continues downstream inside the same projection
-                        x = c
+                    if c.head() == X.head():            # search continues downstream inside the same projection
+                        X = c
 
     # Determines whether X has a sister constituent and returns that constituent if present
     def sister(X):
@@ -403,6 +425,12 @@ class PhraseStructure:
     def isRoot(X):
         return not X.mother
 
+    def mandateDirectHeadMerge(X):
+        return 'ε' in X.features
+
+    def blockDirectHeadMerge(X):
+        return '-ε' in X.features
+
     def obligatory_wcomplement_features(X):
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
@@ -418,8 +446,7 @@ class PhraseStructure:
     def negative_comp_selection(X):
         return {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
 
-    # Definition for adjoinability and returns the adjunction host
-    def adjoinable(X):
+    def license_adjunction(X):
         for f in X.features:
             if f.startswith('α:'):
                 return f.split(':')[1]
@@ -453,12 +480,12 @@ class PhraseStructure:
             if X.chain_index != 0:
                 str += f':{X.chain_index} '
         for x in X.adjuncts:
-            str += '*'
+            str += '^'
         return str
 
     # Defines the major lexical categories used in all printouts
     def lexical_category(X):
-        return next((f for f in X.features if f in major_lexical_categories), '?')
+        return next((f for f in major_lexical_categories if f in X.features), '?')
 
 #
 # Model of the speaker which constitutes the executive layer
@@ -467,7 +494,7 @@ class PhraseStructure:
 class SpeakerModel:
     def __init__(self):
         # List of all syntactic operations available in the grammar
-        self.syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge_, 2, 'Merge'),
+        self.syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.MergeComposite, 2, 'Merge'),
                                      (PhraseStructure.HeadMergePreconditions, PhraseStructure.HeadMerge_, 2, 'Head Merge'),
                                      (PhraseStructure.AdjunctionPreconditions, PhraseStructure.Adjoin_, 2, 'Adjoin')]
         self.n_accepted = 0         # Counts the number of derivations
@@ -493,10 +520,9 @@ class SpeakerModel:
                 for SO in itertools.permutations(sWM, n):                                                   #   All n-tuples of objects in sWM
                     if Preconditions(*SO):                                                                  #   Blocks illicit derivations
                         PhraseStructure.logging_report += f'\t{name}({self.print_lst(SO)})'                 #   Add line to logging report
-                        new_sWM = {x for x in sWM if x not in set(SO)} | OP(*tcopy(SO))                     #   Update sWM
+                        new_sWM = {x for x in sWM if x not in set(SO)} | tset(OP(*tcopy(SO)))               #   Update sWM
                         self.consume_resource(new_sWM, sWM)                                                 #   Record resource consumption and write log entries
                         self.derivational_search_function(new_sWM)                                          #   Continue derivation, recursive branching
-
 
     @staticmethod
     def derivation_is_complete(sWM):
@@ -570,6 +596,7 @@ class LanguageData:
             lines = f.readlines()
             for line in lines:
                 if line.strip() and not line.startswith('#') and not line.startswith('END'):
+                    line = line.strip()
                     if line.startswith('Numeration='):
                         if numeration:
                             self.study_dataset.append((numeration, dataset))
@@ -591,17 +618,19 @@ class LanguageData:
         print(f'\tDerivational steps: {n_steps}')
         overgeneralization = output_from_simulation - gold_standard_dataset
         undergeneralization = gold_standard_dataset - output_from_simulation
-        total_errors = len(overgeneralization) + len(undergeneralization)
-        print(f'\tErrors {total_errors}')
-        if total_errors > 0:
+        errors = len(overgeneralization) + len(undergeneralization)
+        print(f'\tErrors {errors}')
+        if errors > 0:
             print(f'\tShould not generate: {overgeneralization}')
             print(f'\tShould generate: {undergeneralization}')
+        return errors
 
 # Run one whole study as defined by the dataset file, itself containing
 # numeration-target sentences blocks
 def run_study(ld, sm):
     sm.log_file = ld.start_logging()
-    n_dataset = 0
+    n_dataset = 0       #   Number of datasets in the experiment (counter)
+    n_total_errors = 0  #   Count the number of errors in the whole experiment (counter)
     for numeration, gold_standard_dataset in ld.study_dataset:
         n_dataset += 1
         print(f'Dataset {n_dataset}:')
@@ -610,10 +639,12 @@ def run_study(ld, sm):
         sm.log_file.write(f'Numeration: {numeration}\n')
         sm.log_file.write(f'Predicted outcome: {gold_standard_dataset}\n\n\n')
         sm.derive(numeration)
-        ld.evaluate_experiment(sm.output_data, gold_standard_dataset, sm.n_steps)
+        n_total_errors += ld.evaluate_experiment(sm.output_data, gold_standard_dataset, sm.n_steps)
+    print(f'\nTOTAL ERRORS: {n_total_errors}\n')
+    sm.log_file.write(f'\nTOTAL ERRORS: {n_total_errors}')
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                   #   Runs the study

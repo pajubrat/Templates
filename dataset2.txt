@@ -84,6 +84,11 @@ Numeration=T,the,dog,bark,frequently
 the dog bark#T frequently
 frequently the dog bark#T
 
+# 17b
+Numeration=the,angry,dog,bark,frequently
+the angry dog bark frequently
+frequently the angry dog bark
+
 # 18 (Adjunction, transitive clause)
 Numeration=T,the,dog,v,bite,the,man,frequently
 the dog bite#v#T the man frequently
