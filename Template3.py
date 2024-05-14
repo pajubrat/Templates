@@ -110,25 +110,29 @@ class PhraseStructure:
     logging_report = ''
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       # Left and right daughter constituents
-        self.adjuncts = set()     # Adjunct pointers, for bookkeeping during derivation, not part of the theory
-        self.phon = ''            # Name
         self.features = set()     # Lexical features
-        self.zero = False         # Zero-level categories
-        self.silent = False       # Phonological silencing
-        self.chain_index = 0      # Marking chains in the output, not part of the theory
         self.mother = None        # Mother node
         if X:
             X.mother = self
         if Y:
             Y.mother = self
+        self.zero = False         # Zero-level categories
+        self.adjuncts = set()     # Adjunct pointers, for bookkeeping during derivation, not part of the theory
+        self.phonological_exponent = ''            # Name
+        self.silent = False       # Phonological silencing
+        self.chain_index = 0      # Marking chains in the output, not part of the theory
 
-    # Definition for left constituent (abstraction)
+    # Definition for left constituent
     def left(X):
         return X.const[0]
 
-    # Definition for right constituent (abstraction)
+    # Definition for right constituent
     def right(X):
         return X.const[1]
+
+    # Standard bare Merge
+    def Merge(X, Y):
+        return PhraseStructure(X, Y)
 
     def isLeft(X):
         return X.sister() and X.mother.left() == X
@@ -145,7 +149,7 @@ class PhraseStructure:
         return Y
 
     def copy_properties(Y, X):
-        Y.phon = X.phon
+        Y.phonological_exponent = X.phonological_exponent
         Y.features = X.features
         Y.zero = X.zero
         Y.chain_index = X.chain_index
@@ -159,9 +163,10 @@ class PhraseStructure:
         X.silent = True
         return Y
 
-    # Zero-level categories are phrase structure objects with less that two daughter constituents
-    # or they are marked as zero-level objects; these two are still kept separate since the
-    # latter is currently an independent stipulation
+    # Zero-level categories are phrase structure objects with less that 
+	# two daughter constituents or they are marked as zero-level objects; 
+	# these two are still kept separate since the latter is currently 
+	# an independent stipulation
     def zero_level(X):
         return X.zero or X.terminal()
 
@@ -172,10 +177,6 @@ class PhraseStructure:
             if x:
                 return False
         return True
-
-    # Standard bare Merge
-    def Merge(X, Y):
-        return PhraseStructure(X, Y)
 
     # Merge, with head and phrasal repair functions
     # Assumes that Move is part of Merge and derives the relevant
@@ -203,7 +204,9 @@ class PhraseStructure:
         return X
 
     def HeadMovementPreconditions(X, Y):
-        return X.zero_level() and X.bound_morpheme() and not X.mandateDirectHeadMerge()
+        return X.zero_level() and \
+               X.bound_morpheme() and \
+               not X.mandateDirectHeadMerge()
 
     # Phrasal repair for X before Merge
     # We separate A- and A-bar chains explicitly
@@ -233,7 +236,8 @@ class PhraseStructure:
         if X.complement().head().complement() and not X.complement().head().complement().silent:
             return X.complement().head().complement()
 
-    # Head Merge creates zero-level categories and implements feature inheritance
+    # Head Merge creates zero-level categories and 
+	# implements feature inheritance
     def HeadMerge_(X, Y):
         Z = X.Merge(Y)
         Z.zero = True
@@ -243,12 +247,15 @@ class PhraseStructure:
 
     # Preconditions for Head Merge (X Y)
     def HeadMergePreconditions(X, Y):
-        return X.zero_level() and Y.zero_level() and Y.w_selects(X) and not Y.blockDirectHeadMerge()
+        return X.zero_level() and \
+               Y.zero_level() and \
+               Y.w_selects(X) and \
+               not Y.blockDirectHeadMerge()
 
     # Word-internal selection between X and Y under (X Y), where
     # Y selects for X
     def w_selects(Y, X):
-        return Y.leftmost().obligatory_wcomplement_features() and Y.leftmost().obligatory_wcomplement_features() <= X.rightmost().features
+        return Y.leftmost().obligatory_wcomplement_features() <= X.rightmost().features
 
     def leftmost(X):
         while X.left():
@@ -394,7 +401,7 @@ class PhraseStructure:
         if X.terminal():
             if word_str:
                 word_str += '#'
-            word_str += X.phon
+            word_str += X.phonological_exponent
         else:
             for x in X.const:
                 word_str = x.linearize_word(word_str)
@@ -465,7 +472,7 @@ class PhraseStructure:
             else:
                 str += f'{X.mother.head().lexical_category()}P|'
         if X.terminal():                #   Terminal constituents are spelled out
-            str += X.phon
+            str += X.phonological_exponent
         else:
             if X.zero_level():          #   Non-terminal zero-level categories use different brackets
                 bracket = ('(', ')')
@@ -645,6 +652,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset3.txt')     #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset.txt')     #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                   #   Runs the study

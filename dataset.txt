@@ -15,6 +15,10 @@ a c b
 b a c
 a a a
 
+# Words (Chapter 2.2)
+
+
+
 # Intransitives
 	
 	# Intransitive clause
