@@ -526,7 +526,7 @@ class SpeakerModel:
             for Preconditions, OP, n, name in self.syntactic_operations:                                    #   Examine all syntactic operations OP
                 for SO in itertools.permutations(sWM, n):                                                   #   All n-tuples of objects in sWM
                     if Preconditions(*SO):                                                                  #   Blocks illicit derivations
-                        PhraseStructure.logging_report += f'\t{name}({self.print_lst(SO)})'                 #   Add line to logging report
+                        PhraseStructure.logging_report += f'\n\t{name}({self.print_lst(SO)})'               #   Add line to logging report
                         new_sWM = {x for x in sWM if x not in set(SO)} | tset(OP(*tcopy(SO)))               #   Update sWM
                         self.consume_resource(new_sWM, sWM)                                                 #   Record resource consumption and write log entries
                         self.derivational_search_function(new_sWM)                                          #   Continue derivation, recursive branching

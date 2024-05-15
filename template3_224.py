@@ -1,22 +1,13 @@
 import itertools
 
 lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
-           'the': {'D'},
-           'dog': {'N'},
-           'bark': {'V', 'V/INTR'},
-           'ing': {'N', '!wCOMP:V', 'ε'},
-           'man': {'N'},
-           'bite': {'V', 'V/TR'},
-           'v': {'v', 'V'},
-           'does': {'T', 'Aux'},
-           'ed': {'T', '!wCOMP:V'}
+           'the': {'D'}, 'dog': {'N'}, 'bark': {'V', 'V/INTR'}, 'ing': {'N', '!wCOMP:V'},
+           'man': {'N'}, 'bite': {'V', 'V/TR'}
            }
 
 lexical_redundancy_rules = {'D': {'+COMP:N', '+SPEC:Ø'},
-                            'V/TR': {'+COMP:D', '+SPEC:X'},
-                            'V/INTR': {'+SPEC:Ø,X', '+COMP:D'},
-                            'T': {'+COMP:V'},
-                            'v': {'+COMP:V', '+SPEC:D', '!wCOMP:V'},
+                            'V/TR': {'+COMP:D', '+SPEC:D'},
+                            'V/INTR': {'+SPEC:D', '+COMP:Ø'},
                             'N': {'+COMP:Ø', '+SPEC:Ø'}}
 
 
@@ -49,7 +40,6 @@ class Lexicon:
         return X0
 
 class PhraseStructure:
-    log_report = ''
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)       			# Left and right daughter constituents, in an ordered tuple
         self.features = set()     			# Lexical features (not used in this script), in a set
@@ -60,9 +50,8 @@ class PhraseStructure:
             Y.mother_ = self
         self.zero = False
         self.phonological_exponent = ''
-        self.elliptic = False
 
-    def copy(X):
+    def ccopy(X):
         if not X.terminal():
             Y = PhraseStructure(X.left().copy(), X.right().copy())
         else:
@@ -73,14 +62,7 @@ class PhraseStructure:
     def copy_properties(Y, X):
         Y.phonological_exponent = X.phonological_exponent
         Y.features = X.features.copy()
-        Y.elliptic = X.elliptic
         Y.zero = X.zero
-
-    # Grammatical copying with phonological silencing
-    def chaincopy(X):
-        Y = X.copy()
-        X.elliptic = True
-        return Y
 
     # Mother-of relation
     def mother(X):
@@ -115,47 +97,30 @@ class PhraseStructure:
 
     # Preconditions for Merge
     def MergePreconditions(X, Y):
-        return not Y.bound_morpheme() and \
+        return not X.wcomplement_features() and \
+               not Y.wcomplement_features() and \
                not X.selection_violation(Y)
-
-    def MergeComposite(X, Y):
-        return X.HeadMovement(Y).Merge(Y)
-
-    def HeadMovementPreconditions(X, Y):
-        return X.zero_level() and \
-               X.bound_morpheme()
-
-    def bound_morpheme(X):
-        return X.wcomplement_features()
-
-    # Head movement
-    def HeadMovement(X, Y):
-        if X.HeadMovementPreconditions(Y):
-            PhraseStructure.log_report += f'\nHead chain by {X}° targeting {Y.head()}° + '
-            X = Y.head().chaincopy().HeadMerge(X)
-        return X
 
     def selection_violation(X, Y):
         def satisfy(X, fset):
             return (not X and 'Ø' in fset) or (X and fset & X.head().features)
-
         return {f for x in X.Merge(Y).const for f in x.features if
                 fformat(f)[0] == '+COMP' and not satisfy(x.complement(), fformat(f)[1])} or \
                (X.phrasal() and {f for f in Y.head().features if
                                  fformat(f)[0] == '+SPEC' and not satisfy(X, fformat(f)[1])})
 
-    # Preconditions for Head Merge (X Y)
-    def HeadMergePreconditions(X, Y):
-        return X.zero_level() and \
-               Y.zero_level() and \
-               Y.w_selects(X) and 'ε' in X.features
-
-    # Head Merge creates zero-level categories and implements feature inheritance
+        # Head Merge creates zero-level categories and implements feature inheritance
     def HeadMerge(X, Y):
         Z = X.Merge(Y)
         Z.zero = True
         Z.features = Y.features - {f for f in Y.features if f.startswith('!wCOMP:')}
         return Z
+
+    # Preconditions for Head Merge (X Y)
+    def HeadMergePreconditions(X, Y):
+        return X.zero_level() and \
+               Y.zero_level() and \
+               Y.w_selects(X)
 
     # Word-internal selection between X and Y under (X Y),
     # where Y selects for X
@@ -176,8 +141,6 @@ class PhraseStructure:
 
     # Maps phrase structure objects into linear lists of words
     def linearize(X):
-        if X.elliptic:
-            return ''
         output_str = ''
         if X.zero_level():
             output_str += X.linearize_word('') + ' '
@@ -186,7 +149,7 @@ class PhraseStructure:
                 output_str += x.linearize()
         return output_str
 
-    # Spellout algorithm for words, creates morpheme boundaries marked by symbol
+    # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
     def linearize_word(X, word_str):
         if X.terminal():
             if word_str:
@@ -208,10 +171,8 @@ class PhraseStructure:
                 return x
         return x.head()
 
-    # Printout function for phrase structure objects
+   # Print out function for phrase structure objects
     def __str__(X):
-        if X.elliptic:
-            return '__'
         output_str = ''
         if X.terminal():
             output_str += X.phonological_exponent
@@ -224,71 +185,50 @@ class PhraseStructure:
             if not X.zero_level():
                 output_str += f'_{X.head().lexical_category()}P '
             for const in X.const:
-                output_str += f'{const}'
-                if const.isLeft():
-                    output_str += f' '
+                output_str += f'{const} '
             output_str += brackets[1]
         return output_str
 
     # Defines the major lexical categories used in all printouts
     def lexical_category(X):
-        return next((f for f in ['N', 'v', 'V', 'D', 'A', 'P', 'T', 'a', 'b', 'c'] if f in X.features), '?')
+        return next((f for f in {'N', 'V', 'D', 'A', 'P', 'a', 'b', 'c'} if f in X.features), '?')
 
 
-syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.MergeComposite, 2, 'Merge'),
+syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge, 2, 'Merge'),
                         (PhraseStructure.HeadMergePreconditions, PhraseStructure.HeadMerge, 2, 'Head Merge')]
 N_sentences = 0
-data = set()
 
 def derive(sWM):
     global N_sentences
-    global data
     N_sentences = 0
-    data = set()
     print('\nNumeration: {'+ ', '.join((str(x) for x in sWM)) + '}\n')
     derivational_search_function(sWM)
-    for i, s in enumerate(data, start=1):
-        print_(f'{i}. {s} ')
-
-def wcopy(sWM):
-    return (x.copy() for x in sWM)
-
-def print_lst(SO):
-    return ', '.join([str(x) for x in SO])
-
-def print_(s):
-    print(s)
-    PhraseStructure.log_report += s
 
 def derivational_search_function(sWM):
-    if derivation_is_complete(sWM):
-        process_final_output(sWM)
+    if derivation_is_complete(sWM):                                             #   Only one phrase structure object in working memory
+        process_final_output(sWM)                                               #   Terminate processing and evaluate solution
     else:
-        for Preconditions, OP, n, name in syntactic_operations:
-            for SO in itertools.permutations(sWM, n): 
-                if Preconditions(*SO):
-                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*wcopy(SO))}
-                    PhraseStructure.log_report += f'\n{name}({print_lst(SO)})\n= ({print_lst(new_sWM)})\n\n'
-                    derivational_search_function(new_sWM)
+        for Preconditions, OP, n, name in syntactic_operations:                 #   Examine all syntactic operations OP
+            for SO in itertools.permutations(sWM, n):                           #   All n-tuples of objects in sWM
+                if Preconditions(*SO):                                          #   Blocks illicit derivations
+                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}  #   Update sWM
+                    derivational_search_function(new_sWM)                       #   Continue derivation, recursive branching
 
 def derivation_is_complete(sWM):
     return len(sWM) == 1
 
 def process_final_output(sWM):
     global N_sentences
-    global data
     N_sentences += 1
     result = sWM.pop()
-    data.add(f'{result.linearize()} // {result}')
-    PhraseStructure.log_report += f'\t{N_sentences}. {result.linearize()} // {result}\n'
-
+    print(f'\t{N_sentences}. {result.linearize()} // {result}')
 
 Lex = Lexicon()
-
-Numeration_lst = [['the', 'dog', 'ed', 'v', 'bite', 'the', 'man']]
-log_file = open('log.txt', 'w')
+Numeration_lst = [['the', 'dog', 'bite', 'the', 'man'],
+                  ['the', 'dog', 'bark'],
+                  ['the', 'dog', 'bark', 'the', 'man'],
+                  ['the', 'bark', 'ing']
+                  ]
 
 for numeration in Numeration_lst:
-    PhraseStructure.log_report = '\n\n=====\nNumeration: {' + ', '.join(numeration) + '}\n'
     derive({Lex.retrieve(word) for word in numeration})
-    log_file.write(PhraseStructure.log_report)
