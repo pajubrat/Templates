@@ -82,7 +82,7 @@ class PhraseStructure:
             output_str += X.linearize_word('') + ' '
         else:
             for x in X.const:
-                output_str += x.linearize()
+                output_str += x.collapse_and_linearize()
         return output_str
 
     # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
@@ -127,7 +127,7 @@ def derivation_is_complete(sWM):
 def process_final_output(sWM):
     global N_sentences
     N_sentences += 1
-    print(f'{N_sentences}. {sWM.pop().linearize()}')
+    print(f'{N_sentences}. {sWM.pop().collapse_and_linearize()}')
 
 # Initialize the lexicon
 Lex = Lexicon()

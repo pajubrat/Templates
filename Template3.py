@@ -383,17 +383,17 @@ class PhraseStructure:
         linearized_output_str = ''
         # Linearization of left adjuncts
         for x in (x for x in X.adjuncts if x.linearizes_left()):
-            linearized_output_str += x.linearize()
+            linearized_output_str += x.collapse_and_linearize()
         # Linearization of regular constituents
         if not X.silent:
             if X.zero_level():
                 linearized_output_str += X.linearize_word('') + ' '
             else:
                 for x in X.const:
-                    linearized_output_str += x.linearize()
+                    linearized_output_str += x.collapse_and_linearize()
         # Linearization of right adjuncts
         for x in (x for x in X.adjuncts if x.linearizes_right()):
-            linearized_output_str += x.linearize()
+            linearized_output_str += x.collapse_and_linearize()
         return linearized_output_str
 
     # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
@@ -461,26 +461,26 @@ class PhraseStructure:
     # Auxiliary printout function, to help eyeball the output
     def __str__(X):
         str = ''
-        if X.silent:                    #   Phonologically silenced constituents are marked by __
+        if X.silent:
             if X.zero_level():
                 return '__ '
             else:
                 return f'__:{X.chain_index} '
-        if X.mother and X not in X.mother.const:                    # Adjunct printout, add the adjunction link
+        if X.mother and X not in X.mother.const:
             if X.mother.zero_level():
                 str += f'{X.mother.head().lexical_category()}|'
             else:
                 str += f'{X.mother.head().lexical_category()}P|'
-        if X.terminal():                #   Terminal constituents are spelled out
+        if X.terminal():
             str += X.phonological_exponent
         else:
-            if X.zero_level():          #   Non-terminal zero-level categories use different brackets
+            if X.zero_level():
                 bracket = ('(', ')')
             else:
                 bracket = ('[', ']')
             str += bracket[0]
             if not X.zero_level():
-                str += f'_{X.head().lexical_category()}P '  #   Print information about heads and labelling
+                str += f'_{X.head().lexical_category()}P '
             for const in X.const:
                 str += f'{const} '
             str += bracket[1]
@@ -561,7 +561,7 @@ class SpeakerModel:
                 return
         self.n_accepted += 1
         prefix = f'{self.n_accepted}'
-        output_sentence = f'{self.root_structure(sWM).linearize()}'
+        output_sentence = f'{self.root_structure(sWM).collapse_and_linearize()}'
         print(f'\t({prefix}) {output_sentence} {self.print_constituent_lst(sWM)}')   # Print the output
         self.log_file.write(f'\t^ ACCEPTED: {output_sentence}')
         self.output_data.add(output_sentence.strip())

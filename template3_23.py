@@ -132,7 +132,7 @@ class PhraseStructure:
     def HeadMovement(X, Y):
         if X.HeadMovementPreconditions(Y):
             PhraseStructure.log_report += f'\nHead chain by {X}° targeting {Y.head()}° + '
-            X = Y.head().chaincopy().HeadMerge(X)
+            return Y.head().chaincopy().HeadMerge(X)
         return X
 
     def selection_violation(X, Y):
@@ -183,7 +183,7 @@ class PhraseStructure:
             output_str += X.linearize_word('') + ' '
         else:
             for x in X.const:
-                output_str += x.linearize()
+                output_str += x.collapse_and_linearize()
         return output_str
 
     # Spellout algorithm for words, creates morpheme boundaries marked by symbol
@@ -279,8 +279,8 @@ def process_final_output(sWM):
     global data
     N_sentences += 1
     result = sWM.pop()
-    data.add(f'{result.linearize()} // {result}')
-    PhraseStructure.log_report += f'\t{N_sentences}. {result.linearize()} // {result}\n'
+    data.add(f'{result.collapse_and_linearize()} // {result}')
+    PhraseStructure.log_report += f'\t{N_sentences}. {result.collapse_and_linearize()} // {result}\n'
 
 
 Lex = Lexicon()
