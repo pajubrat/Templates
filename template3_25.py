@@ -38,13 +38,11 @@ def fformat(f):
         return f.split(':')[0], set(f.split(':')[1].split(','))
     return None, None
 
-# Class which stores and maintains the lexicon
 class Lexicon:
     def __init__(self):
         self.lexical_entries = dict()
         self.compose_lexicon()
 
-    # Composes the lexicon from the list of words and lexical redundancy rules
     def compose_lexicon(self):
         for lex in lexicon.keys():
             self.lexical_entries[lex] = lexicon[lex]
@@ -52,22 +50,20 @@ class Lexicon:
                 if trigger_feature in self.lexical_entries[lex]:
                     self.lexical_entries[lex] = self.lexical_entries[lex] | lexical_redundancy_rules[trigger_feature]
 
-    # Retrieves lexical items from the lexicon and wraps them into zero-level
-    # phrase structure objects
     def retrieve(self, name):
         X0 = PhraseStructure()
-        X0.features = self.lexical_entries[name]        # Retrieves lexical features from the lexicon
-        X0.zero = True                                  # True = zero-level category
-        X0.phonological_exponent = name                 # Spellout form is the same as the name
+        X0.features = self.lexical_entries[name]
+        X0.zero = True
+        X0.phonological_exponent = name
         return X0
 
 class PhraseStructure:
     log_report = ''
     chain_index = 0
     def __init__(self, X=None, Y=None):
-        self.const = (X, Y)       			# Left and right daughter constituents, in an ordered tuple
-        self.features = set()     			# Lexical features (not used in this script), in a set
-        self.mother_ = None        			# Mother node (not used in this script)
+        self.const = (X, Y)
+        self.features = set()
+        self.mother_ = None
         if X:
             X.mother_ = self
         if Y:
@@ -92,15 +88,16 @@ class PhraseStructure:
         Y.chain_index = X.chain_index
         Y.zero = X.zero
 
-    # Grammatical copying with phonological silencing
     def chaincopy(X):
         Y = X.copy()
         X.elliptic = True
         return Y
 
-    # Mother-of relation
     def mother(X):
         return X.mother_
+
+    def set_mother(X, Y):
+        X.mother_ = Y
 
     def left(X):
         return X.const[0]
@@ -114,28 +111,26 @@ class PhraseStructure:
     def isRight(X):
         return X.mother() and X.mother().right() == X
 
-    # Determines whether X has a sister constituent and returns that constituent if present
     def sister(X):
-        if X.isLeft():
-            return X.mother().right()
-        return X.mother().left()
+        return next((x for x in X.mother().const if x != X), None)
 
-    # Complement is right sister of a zero-level object
     def complement(X):
         if X.zero_level() and X.isLeft():
             return X.sister()
 
-    # Standard Merge
+    def head(X):
+        return next((x for x in (X,) + X.const if x.zero_level()), X.phrasal() and X.right().head())
+
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
-    # Preconditions for Merge
     def MergePreconditions(X, Y):
         return not Y.bound_morpheme() and \
                not X.selection_violation(Y) and X.sandwich_condition(Y)
 
     def sandwich_condition(X, Y):
-        if X.zero_level() and {f for f in Y.head().features if fformat(f)[0] == '+SPEC' and 'Ø' not in f and ':X' not in f}:
+        if X.zero_level() and \
+                {f for f in Y.head().features if fformat(f)[0] == '+SPEC' and 'Ø' not in f and ':X' not in f}:
             return Y.phrasal() and Y.left().phrasal()
         return True
 
@@ -151,10 +146,8 @@ class PhraseStructure:
     def MergeComposite(X, Y):
         return X.HeadMovement(Y).Merge(Y).phrasal_movement()
 
-    # Adjunct Merge is a variation of Merge,
-    # but creates a parallel phrase structure
     def Adjoin(X, Y):
-        X.mother_ = Y
+        X.set_mother(Y)
         return X, Y
 
     def AdjoinPreconditions(X, Y):
@@ -162,33 +155,27 @@ class PhraseStructure:
 
     def adjoins_to(X, Y):
         fset = {f.split(':')[1] for f in X.head().features if f.startswith('adjoin:')}
-        if fset:
-            return fset <= Y.head().features
+        return fset and fset <= Y.head().features
 
     def adjunct(X):
         return X.mother() and X not in X.mother().const
 
     def HeadMovementPreconditions(X, Y):
-        return X.zero_level() and \
-               X.bound_morpheme()
+        return X.zero_level() and X.bound_morpheme()
 
     def bound_morpheme(X):
         return X.wcomplement_features()
 
-    # Head movement
     def HeadMovement(X, Y):
         if X.HeadMovementPreconditions(Y):
             PhraseStructure.log_report += f'HEAD CHAIN by {X}° targeting {Y.head()}°'
             return Y.head().chaincopy().HeadMerge(X)
         return X
 
-    # Preconditions for Head Merge (X Y)
     def HeadMergePreconditions(X, Y):
-        return X.zero_level() and \
-               Y.zero_level() and \
+        return X.zero_level() and Y.zero_level() and \
                Y.w_selects(X) and 'ε' in X.features
 
-    # Head Merge creates zero-level categories and implements feature inheritance
     def HeadMerge(X, Y):
         Z = X.Merge(Y)
         Z.zero = True
@@ -235,24 +222,19 @@ class PhraseStructure:
             X.chain_index = PhraseStructure.chain_index
         return X
 
-    # Word-internal selection between X and Y under (X Y),
-    # where Y selects for X
     def w_selects(Y, X):
         return Y.wcomplement_features() and \
                Y.wcomplement_features() <= X.features
 
-    # Returns a set of w-selection features
     def wcomplement_features(X):
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
-    # Interface function for zero
     def zero_level(X):
         return X.zero
 
     def phrasal(X):
         return not X.zero_level()
 
-    # Maps phrase structure objects into linear lists of words
     def linearize(X):
         if X.elliptic:
             return ''
@@ -264,7 +246,6 @@ class PhraseStructure:
                 output_str += x.linearize()
         return output_str
 
-    # Spellout algorithm for words, creates morpheme boundaries marked by symbol
     def linearize_word(X, word_str):
         if X.terminal():
             if word_str:
@@ -275,18 +256,9 @@ class PhraseStructure:
                 word_str = x.linearize_word(word_str)
         return word_str
 
-    # Terminal elements do not have daughter constituents
     def terminal(X):
         return len({x for x in X.const if x}) == 0
 
-    # Calculates the head of any phrase structure object
-    def head(X):
-        for x in (X,) + X.const:
-            if x and x.zero_level():
-                return x
-        return x.head()
-
-    # Printout function for phrase structure objects
     def __str__(X):
         output_str = ''
         if X.elliptic:
@@ -334,7 +306,6 @@ class PhraseStructure:
         collapse_chain_indexes(X, d, 1)
         prune_chain_indexes(X, d)
 
-    # Defines the major lexical categories used in all printouts
     def lexical_category(X):
         return next((f for f in ['N', 'v', 'v*', 'Adv', 'Inf', 'V', 'C', 'D', 'A', 'P', 'T', 'a', 'b', 'c'] if f in X.features), '?')
 
@@ -356,7 +327,7 @@ def collapse_and_linearize(sWM):
     for X in [x for x in sWM if x.adjunct()]:
         X.mother().const += (X,)
         sWM.remove(X)
-    X = sWM.pop()   #   Only one phrase structure object goes into linearization
+    X = sWM.pop()
     return X, X.linearize()
 
 def print_lst(SO):
@@ -381,7 +352,7 @@ syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Mer
 def wcopy(SO):
     return (x.copy() for x in SO)
 
-# This function copies the contents of sWM for backtracking purposes
+# Copies the contents of sWM for backtracking purposes
 def sWMcopy(sWM, SO):
     def get_mirror(x, M):
         return next((m[1] for m in M if x == m[0]), None)
