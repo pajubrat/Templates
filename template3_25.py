@@ -342,7 +342,7 @@ def print_sWM(sWM):
     iWM = [f'{x.mother().head().lexical_category()}P|{x}' for x in sWM if x.adjunct()]
     s = f'{", ".join(aWM)}'
     if iWM:
-        s += f'{{ {", ".join(iWM)} }}'
+        s += f' {{ {", ".join(iWM)} }}'
     return s
 
 syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.MergeComposite, 2, 'MERGE'),
