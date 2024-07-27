@@ -28,10 +28,11 @@ class Lexicon:
         return X0
 
 class PhraseStructure:
+    """Simple asymmetric binary-branching bare phrase structure formalism"""
     def __init__(self, X=None, Y=None):
-        self.const = (X, Y)       			# Left and right daughter constituents, in an ordered tuple
-        self.features = set()     			# Lexical features (not used in this script), in a set
-        self.mother = None        			# Mother node (not used in this script)
+        self.const = (X, Y)
+        self.features = set()
+        self.mother = None
         if X:
             X.mother = self
         if Y:

@@ -16,8 +16,8 @@ def fformat(f):
         return f.split(':')[0], set(f.split(':')[1].split(','))
     return None, None
 
-# Class which stores and maintains the lexicon
 class Lexicon:
+    """Stores lexical knowledge"""
     def __init__(self):
         self.speaker_lexicon = dict()
         self.compose_speaker_lexicon()
@@ -41,6 +41,7 @@ class Lexicon:
         return X0
 
 class PhraseStructure:
+    """Simple asymmetric binary-branching bare phrase structure formalism"""
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)
         self.features = set()
@@ -65,7 +66,6 @@ class PhraseStructure:
         Y.features = X.features.copy()
         Y.zero = X.zero
 
-    # Mother-of relation
     def mother(X):
         return X.mother_
 
@@ -88,7 +88,7 @@ class PhraseStructure:
         return X.mother().left()
 
     def complement(X):
-		"""Complement is a right sister of a zero-level objects"""
+        """Complement is a right sister of a zero-level objects"""
         if X.zero_level() and X.isLeft():
             return X.sister()
 
@@ -103,7 +103,7 @@ class PhraseStructure:
                not X.selection_violation(Y)																	
 
     def selection_violation(X, Y):
-		"""Selection violation for both complement and specifier selection"""
+        """Selection violation for both complement and specifier selection"""
         def satisfy(X, fset):
             return (not X and 'Ø' in fset) or (X and fset & X.head().features)
         return {f for x in X.Merge(Y).const for f in x.features if
@@ -135,7 +135,7 @@ class PhraseStructure:
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
     def zero_level(X):
-		"""Abstraction for the zero-property"""
+        """Abstraction for the zero-property"""
         return X.zero
 
     def phrasal(X):
@@ -188,14 +188,14 @@ def derive(sWM):
     derivational_search_function(sWM)
 
 def derivational_search_function(sWM):
-    if derivation_is_complete(sWM):                                             #   Only one phrase structure object in working memory
-        process_final_output(sWM)                                               #   Terminate processing and evaluate solution
+    if derivation_is_complete(sWM):
+        process_final_output(sWM)
     else:
-        for Preconditions, OP, n, name in syntactic_operations:                 #   Examine all syntactic operations OP
-            for SO in itertools.permutations(sWM, n):                           #   All n-tuples of objects in sWM
-                if Preconditions(*SO):                                          #   Blocks illicit derivations
-                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}  #   Update sWM
-                    derivational_search_function(new_sWM)                       #   Continue derivation, recursive branching
+        for Preconditions, OP, n, name in syntactic_operations:
+            for SO in itertools.permutations(sWM, n):
+                if Preconditions(*SO):
+                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}
+                    derivational_search_function(new_sWM)
 
 def derivation_is_complete(sWM):
     return len(sWM) == 1
