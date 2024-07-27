@@ -56,8 +56,8 @@ class PhraseStructure:
 
     def HeadMerge(X, Y):
         """Creates a zero-level object from two zero-level objects.
-		Features of the resulting object are inherited from the rightmost
-		constituent"""
+        Features of the resulting object are inherited from the rightmost
+        constituent"""
         Z = X.Merge(Y)
         Z.zero = True
         Z.features = Y.features

@@ -1,6 +1,6 @@
 import itertools
 
-lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
+lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'},
            'the': {'D'}, 'dog': {'N'}, 'bark': {'V', 'V/INTR'}, 'ing': {'N', '!wCOMP:V'},
            'man': {'N'}, 'bite': {'V', 'V/TR'}
            }
@@ -19,36 +19,37 @@ def fformat(f):
 # Class which stores and maintains the lexicon
 class Lexicon:
     def __init__(self):
-        self.lexical_entries = dict()
-        self.compose_lexicon()
+        self.speaker_lexicon = dict()
+        self.compose_speaker_lexicon()
 
-    # Composes the lexicon from the list of words and lexical redundancy rules
-    def compose_lexicon(self):
+    def compose_speaker_lexicon(self):
+        """Composes speaker lexicon from root lexicon and lexical redundancy rules"""
         for lex in lexicon.keys():
-            self.lexical_entries[lex] = lexicon[lex]
+            self.speaker_lexicon[lex] = lexicon[lex]
             for trigger_feature in lexical_redundancy_rules:
-                if trigger_feature in self.lexical_entries[lex]:
-                    self.lexical_entries[lex] = self.lexical_entries[lex] | lexical_redundancy_rules[trigger_feature]
+                if trigger_feature in self.speaker_lexicon[lex]:
+                    self.speaker_lexicon[lex] = self.speaker_lexicon[lex] | \
+                                                lexical_redundancy_rules[trigger_feature]
 
     # Retrieves lexical items from the lexicon and wraps them into zero-level
     # phrase structure objects
     def retrieve(self, name):
         X0 = PhraseStructure()
-        X0.features = self.lexical_entries[name]        # Retrieves lexical features from the lexicon
+        X0.features = self.speaker_lexicon[name]        # Retrieves lexical features from the lexicon
         X0.zero = True                                  # True = zero-level category
         X0.phonological_exponent = name                 # Spellout form is the same as the name
         return X0
 
 class PhraseStructure:
     def __init__(self, X=None, Y=None):
-        self.const = (X, Y)       			# Left and right daughter constituents, in an ordered tuple
-        self.features = set()     			# Lexical features (not used in this script), in a set
-        self.mother_ = None        			# Mother node (not used in this script)
+        self.const = (X, Y)
+        self.features = set()
+        self.mother_ = None
         if X:
             X.mother_ = self
         if Y:
             Y.mother_ = self
-        self.zero = False
+        self.zero = False																																								
         self.phonological_exponent = ''
 
     def ccopy(X):
@@ -86,8 +87,8 @@ class PhraseStructure:
             return X.mother().right()
         return X.mother().left()
 
-    # Complement is right sister of a zero-level object
     def complement(X):
+		"""Complement is a right sister of a zero-level objects"""
         if X.zero_level() and X.isLeft():
             return X.sister()
 
@@ -99,9 +100,10 @@ class PhraseStructure:
     def MergePreconditions(X, Y):
         return not X.wcomplement_features() and \
                not Y.wcomplement_features() and \
-               not X.selection_violation(Y)
+               not X.selection_violation(Y)																	
 
     def selection_violation(X, Y):
+		"""Selection violation for both complement and specifier selection"""
         def satisfy(X, fset):
             return (not X and 'Ø' in fset) or (X and fset & X.head().features)
         return {f for x in X.Merge(Y).const for f in x.features if
@@ -132,62 +134,43 @@ class PhraseStructure:
     def wcomplement_features(X):
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
-    # Interface function for zero
     def zero_level(X):
+		"""Abstraction for the zero-property"""
         return X.zero
 
     def phrasal(X):
         return not X.zero_level()
 
-    # Maps phrase structure objects into linear lists of words
     def linearize(X):
-        output_str = ''
+        """Linearizes phrase structure objects into sentences"""
         if X.zero_level():
-            output_str += X.linearize_word('') + ' '
-        else:
-            for x in X.const:
-                output_str += x.collapse_and_linearize()
-        return output_str
+            return X.linearize_word()[:-1] + ' '
+        return ''.join([x.linearize() for x in X.const])
 
-    # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
-    def linearize_word(X, word_str):
+    def linearize_word(X):
+        """Separate linearization algorithm for words"""
         if X.terminal():
-            if word_str:
-                word_str += '#'
-            word_str += X.phonological_exponent
-        else:
-            for x in X.const:
-                word_str = x.linearize_word(word_str)
-        return word_str
+            return X.phonological_exponent + '#'
+        return ''.join([x.linearize_word() for x in X.const])
 
     # Terminal elements do not have daughter constituents
     def terminal(X):
         return len({x for x in X.const if x}) == 0
-         
-    # Calculates the head of any phrase structure object
+
     def head(X):
+        """Calculates the head of any phrase structure object"""
         for x in (X,) + X.const:
             if x and x.zero_level():
                 return x
         return x.head()
 
-   # Print out function for phrase structure objects
     def __str__(X):
-        output_str = ''
+        """Simple printout function for phrase structure objects"""
         if X.terminal():
-            output_str += X.phonological_exponent
-        else:
-            if X.zero_level():
-                brackets = ('(', ')')
-            else:
-                brackets = ('[', ']')
-            output_str += brackets[0]
-            if not X.zero_level():
-                output_str += f'_{X.head().lexical_category()}P '
-            for const in X.const:
-                output_str += f'{const} '
-            output_str += brackets[1]
-        return output_str
+            return X.phonological_exponent
+        elif X.zero_level():
+            return '(' + ' '.join([f'{x}' for x in X.const]) + ')'
+        return f'[_{X.head().lexical_category()}P ' + ' '.join([f'{x}' for x in X.const]) + ']'			
 
     # Defines the major lexical categories used in all printouts
     def lexical_category(X):
@@ -220,11 +203,12 @@ def derivation_is_complete(sWM):
 def process_final_output(sWM):
     global N_sentences
     N_sentences += 1
-    result = sWM.pop()
-    print(f'\t{N_sentences}. {result.collapse_and_linearize()} // {result}')
+    X = sWM.pop()
+    print(f'\t{N_sentences}. {X.linearize()}   {X}')
 
 Lex = Lexicon()
-Numeration_lst = [['the', 'dog', 'bite', 'the', 'man'],
+Numeration_lst = [['a', 'b', 'c'],
+                 ['the', 'dog', 'bite', 'the', 'man'],
                   ['the', 'dog', 'bark'],
                   ['the', 'dog', 'bark', 'the', 'man'],
                   ['the', 'bark', 'ing']

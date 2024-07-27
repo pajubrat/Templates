@@ -1,30 +1,30 @@
 import itertools
 
-# Asymmetric binary-branching phrase structure formalism, with
-# a minimal set of properties
+# Script template2.3b for § 2.3 in Brattico, P. (2024). Computational generative grammar
 
-lexicon = {'a': set(), 'b': set(), 'c': set(), 'd': set(),
+root_lexicon = {'a': set(), 'b': set(), 'c': set(), 'd': set(),
            'the': {'D'}, 'dog': {'N'}, 'bark': {'V'}, 'ing': {'N', '!wCOMP:V'}
            }
 
-# Class which stores and maintains the lexicon
 class Lexicon:
+    """Stores lexical knowledge"""
     def __init__(self):
-        self.lexical_entries = dict()   #   The lexicon is a dictionary
-        self.compose_lexicon()          #   Creates the runtime lexicon
+        self.speaker_lexicon = dict()
+        self.compose_speaker_lexicon()
 
-    # Composes the lexicon from the list of words and lexical redundancy rules
-    def compose_lexicon(self):
-        for lex in lexicon.keys():
-            self.lexical_entries[lex] = lexicon[lex]
+    def compose_speaker_lexicon(self):
+        """Composes the lexicon from the list of words and
+        (later) lexical redundancy rules"""
+        for lex in root_lexicon.keys():
+            self.speaker_lexicon[lex] = root_lexicon[lex]
 
-    # Retrieves lexical items from the lexicon and wraps them into zero-level
-    # phrase structure objects
     def retrieve(self, name):
+        """Retrieves lexical items from the speaker lexicon and wraps them
+        into zero-level phrase structure objects"""
         X0 = PhraseStructure()
-        X0.features = self.lexical_entries[name]        # Retrieves lexical features from the lexicon
-        X0.zero = True                                  # True = zero-level category
-        X0.phonological_exponent = name                                  # Spellout form is the same as the name
+        X0.features = self.speaker_lexicon[name]
+        X0.zero = True
+        X0.phonological_exponent = name
         return X0
 
 class PhraseStructure:
@@ -39,62 +39,59 @@ class PhraseStructure:
         self.zero = False
         self.phonological_exponent = ''
 
-    # Standard Merge
     def Merge(X, Y):
         return PhraseStructure(X, Y)
 
-    # Preconditions for Merge
     def MergePreconditions(X, Y):
+        """Preconditions for Merge"""
         return not X.wcomplement_features() and \
                not Y.wcomplement_features()
 
-    # Head Merge creates zero-level categories and implements feature inheritance
     def HeadMerge(X, Y):
+        """Creates zero-level categories from zero-level categories"""
         Z = X.Merge(Y)
         Z.zero = True
         Z.features = Y.features - {f for f in Y.features if f.startswith('!wCOMP:')}
         return Z
 
-    # Preconditions for Head Merge (X Y)
     def HeadMergePreconditions(X, Y):
+        """Preconditions for Head Merge (X Y)"""
         return X.zero_level() and \
                Y.zero_level() and \
                Y.w_selects(X)
 
-    # Word-internal selection between X and Y under (X Y),
-    # where Y selects for X
     def w_selects(Y, X):
+        """Word-internal selection between X and Y under (X Y), where Y selects for X"""
         return Y.wcomplement_features() and \
                Y.wcomplement_features() <= X.features
 
-    # Returns a set of w-selection features
     def wcomplement_features(X):
+        """Returns a set of w-selection features"""
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
     # Interface function for zero
     def zero_level(X):
         return X.zero
 
-    # Maps phrase structure objects into linear lists of words
-    def linearize(X):
-        output_str = ''
-        if X.zero_level():
-            output_str += X.linearize_word('') + ' '
-        else:
-            for x in X.const:
-                output_str += x.collapse_and_linearize()
-        return output_str
-
-    # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
-    def linearize_word(X, word_str):
+    def __str__(X):
+        """Simple printout function for phrase structure objects"""
         if X.terminal():
-            if word_str:
-                word_str += '#'
-            word_str += X.phonological_exponent
-        else:
-            for x in X.const:
-                word_str = x.linearize_word(word_str)
-        return word_str
+            return X.phonological_exponent
+        elif X.zero_level():
+            return '(' + ' '.join([f'{x}' for x in X.const]) + ')'
+        return '[' + ' '.join([f'{x}' for x in X.const]) + ']'
+
+    def linearize(X):
+        """Linearizes phrase structure objects into sentences"""
+        if X.zero_level():
+            return X.linearize_word()[:-1] + ' '
+        return ''.join([x.linearize() for x in X.const])
+
+    def linearize_word(X):
+        """Separate linearization algorithm for words"""
+        if X.terminal():
+            return X.phonological_exponent + '#'
+        return ''.join([x.linearize_word() for x in X.const])
 
     # Terminal elements do not have daughter constituents
     def terminal(X):
@@ -112,14 +109,14 @@ syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Mer
 N_sentences = 0
 
 def derivational_search_function(sWM):
-    if derivation_is_complete(sWM):                                             #   Only one phrase structure object in working memory
-        process_final_output(sWM)                                               #   Terminate processing and evaluate solution
+    if derivation_is_complete(sWM):
+        process_final_output(sWM)
     else:
-        for Preconditions, OP, n, name in syntactic_operations:                 #   Examine all syntactic operations OP
-            for SO in itertools.permutations(sWM, n):                           #   All n-tuples of objects in sWM
-                if Preconditions(*SO):                                          #   Blocks illicit derivations
-                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}  #   Update sWM
-                    derivational_search_function(new_sWM)                       #   Continue derivation, recursive branching
+        for Preconditions, OP, n, name in syntactic_operations:
+            for SO in itertools.permutations(sWM, n):
+                if Preconditions(*SO):
+                    new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}
+                    derivational_search_function(new_sWM)
 
 def derivation_is_complete(sWM):
     return len(sWM) == 1
@@ -127,7 +124,8 @@ def derivation_is_complete(sWM):
 def process_final_output(sWM):
     global N_sentences
     N_sentences += 1
-    print(f'{N_sentences}. {sWM.pop().collapse_and_linearize()}')
+    X = sWM.pop()
+    print(f'{N_sentences}. {X.linearize()}  {X}')
 
 # Initialize the lexicon
 Lex = Lexicon()
