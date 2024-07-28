@@ -239,11 +239,11 @@ class PhraseStructure:
         """Simple algorithm for phrasal A-movement with preconditions"""
         if X.left().EPP() and \
                 X.left().complement() and \
-                X.left().complement().target_for_A_movement():
+                X.left().complement().goal_for_A_movement():
             PhraseStructure.log_report += f'\nPhrasal A-movement by ' \
                                           f'{X.left()} targeting ' \
-                                          f'{X.left().complement().target_for_A_movement()}\n'
-            return X.left().complement().target_for_A_movement().chaincopy().Merge(X)
+                                          f'{X.left().complement().goal_for_A_movement()}\n'
+            return X.left().complement().goal_for_A_movement().chaincopy().Merge(X)
         return X
 
     def phrasal_A_bar_movement(X):

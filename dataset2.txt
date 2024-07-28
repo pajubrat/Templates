@@ -4,7 +4,14 @@
 #
 
 # 1
-Numeration=a,b,c,d
+Numeration=a,b,c
+a b c
+c a b
+b a c
+a c b
+c b a
+b a c
+b c a
 
 # 2
 Numeration=the,man,bite,the,dog
