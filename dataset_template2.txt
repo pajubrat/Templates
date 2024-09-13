@@ -1,10 +1,9 @@
-
 #
 # Example dataset for Template2
 #
 
 # 1
-Numeration=a,b,c
+Numeration=a,b,c,d
 a b c
 c a b
 b a c
@@ -78,10 +77,6 @@ Numeration=C(wh),T,the,dog,from,which,city,bark
 Numeration=the,dog,T,seem,to,bark
 the dog seem#T to bark
 
-# 15b (embedded finite clause, 15 million calculations)
-# Numeration=C,the,man,T,believe,that,T,the,dog,bark
-# C the man believe#T that the dog bark#T
-
 # 16 (personal passive)
 Numeration=was,v*,bite,the,man
 the man was bite#v*
@@ -113,15 +108,18 @@ the angry dog
 Numeration=T,the,angry,dog,bark
 the angry dog bark#T
 
-# 21 (Right-adjunction of PP to VP)
+# 21 (very long calculations, tagged out)
+# Numeration=the,dog,bite,the,man,in,the,city
+
+# 22 (Right-adjunction of PP to VP)
 Numeration=the,dog,bark,in,the,city
 the dog bark in the city
 the city bark in the dog
 
-# 22 (Right-adjunction and wh-extraction)
+# 23 (Right-adjunction and wh-extraction)
 Numeration=C(wh),the,dog,did,bark,in,which,city
 
-# 23 (Worst case simulations)
+# 24 (Worst case simulations)
 #Numeration=a
 #Numeration=a,b
 #Numeration=a,b,c
@@ -129,3 +127,6 @@ Numeration=C(wh),the,dog,did,bark,in,which,city
 #Numeration=a,b,c,d,a
 #Numeration=a,b,c,d,a,b
 
+# 25 (embedded finite clause, 15 million calculations)
+# Numeration=C,the,man,T,believe,that,T,the,dog,bark
+# C the man believe#T that the dog bark#T

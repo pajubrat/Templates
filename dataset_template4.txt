@@ -1,0 +1,22 @@
+
+# Small test dataset for a recognition grammar
+
+a
+a b 
+a b c
+a b c d
+a b c d a
+
+
+the dog barks
+*the barks dog
+*dog the barks
+*dog barks the
+*barks the dog
+*barks dog the
+
+the dog bites the man
+the man bites the dog
+*the the man bites dog
+
+the dog v bites the man

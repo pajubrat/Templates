@@ -1,17 +1,18 @@
 #
-# Template script for Brattico, P. (2024). Computational biolinguistics, complexity and the justification of grammars
+# Template script for Brattico, P. (2024). Computational generative grammar and complexity
 #
 
 import itertools
 
+# Defines a simple root lexicon as a dictionary
 lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'the': {'D'},
            'dog': {'N'},
            'bark': {'V', 'V/INTR'},
            'barks': {'V', 'V/INTR'},
            'ing': {'N', '!wCOMP:V', 'PC:#X', 'ε'},
-           'bites': {'V', '!COMP:D', '!SPEC:D'},
-           'bite': {'V', '!COMP:D'},
+           'bites': {'V', '+COMP:D', '+SPEC:D'},
+           'bite': {'V', '+COMP:D'},
            'bite*': {'V', 'V/TR'},
            'which': {'D', 'WH'},
            'man': {'N'},
@@ -21,31 +22,33 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'from': {'P'},
            'in': {'P', 'α:V', },
            'ed': {'T', 'PC:#X', '!wCOMP:V'},
-           'T': {'T', 'PC:#X', 'EPP', '!SPEC:D', '!wCOMP:V'},
+           'T': {'T', 'PC:#X', 'EPP', '+SPEC:D', '!wCOMP:V'},
            'T*': {'T', 'PC:#X', '!wCOMP:V'},
            'did': {'T', 'EPP'},
            'does': {'T'},
            'was': {'T', 'EPP'},
-           'C': {'C', 'PC:#X', '!wCOMP:T'},
+           'C': {'C'},
            'C(wh)': {'C', 'C(wh)', 'PC:#X', '!wCOMP:T', 'WH', 'SCOPE'},
            'v': {'v', 'PC:#X', '!wCOMP:V'},
-           'v*': {'V', 'EPP', 'PC:#X', '!COMP:V', '-SPEC:v', '!wCOMP:V'},
+           'v*': {'V', 'EPP', 'PC:#X', '+COMP:V', '-SPEC:v', '!wCOMP:V'},
            'that': {'C'},
-           'believe': {'V', '!COMP:C'},
-           'seem': {'V', 'EPP', '!SPEC:D', '!COMP:T/inf', 'RAISING'},
-           'to': {'T/inf', '!COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'}}
+           'believe': {'V', '+COMP:C'},
+           'seem': {'V', 'EPP', '+SPEC:D', '+COMP:T/inf', 'RAISING'},
+           'to': {'T/inf', '+COMP:V', '-COMP:RAISING', '-COMP:T', 'EPP'}}
 
-lexical_redundancy_rules = {'D': {'!COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
+# Lexical redundancy rules add features to lexical items based on their feature content
+# This creates speaker lexicons
+lexical_redundancy_rules = {'D': {'+COMP:N', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:D', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
                             'V': {'-SPEC:C', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A', '-COMP:N', '-COMP:T'},
                             'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D', '-COMP:Adv', '-COMP:A'},
-                            'P': {'!COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
-                            'C': {'!COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
+                            'P': {'+COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
+                            'C': {'+COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
                             'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
                             'N': {'-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:D', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:N', '-SPEC:D', '-SPEC:N', '-SPEC:P', '-SPEC:T/inf'},
-                            'T': {'!COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-ε'},
-                            'v': {'V', '!COMP:V', '!SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '!wCOMP:V', '-ε'},
-                            'V/INTR': {'-COMP:D', '!SPEC:D'},
-                            'V/TR': {'-SPEC:D', '!COMP:D'}
+                            'T': {'+COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-ε'},
+                            'v': {'V', '+COMP:V', '+SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '!wCOMP:V', '-ε'},
+                            'V/INTR': {'-COMP:D', '+SPEC:D'},
+                            'V/TR': {'-SPEC:D', '+COMP:D'}
                             }
 
 major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd']
@@ -64,7 +67,7 @@ class Lexicon:
     """Stores lexical knowledge independently of the syntactic phrase structure"""
     def __init__(self):
         self.speaker_lexicon = dict()   #   The lexicon is a dictionary
-        self.compose_speaker_lexicon()          #   Creates the runtime lexicon by combining the lexicon and
+        self.compose_speaker_lexicon()  #   Creates the runtime lexicon by combining the root lexicon and
                                         #   the lexical redundancy rules
 
     def compose_speaker_lexicon(self):
@@ -333,15 +336,15 @@ class PhraseStructure:
             x = x.mother
 
     def linearize(X):
-        linearized_output_str = ''
+        stri = ''
+        stri += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_left()])
         if not X.elliptic:
-            linearized_output_str += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_left()])
             if X.zero_level():
-                linearized_output_str += X.linearize_word()[:-1] + ' '
+                stri += X.linearize_word()[:-1] + ' '
             else:
-                linearized_output_str += ''.join([x.linearize() for x in X.const])
-            linearized_output_str += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_right()])
-        return linearized_output_str
+                stri += ''.join([x.linearize() for x in X.const])
+        stri += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_right()])
+        return stri
 
     # Spellout algorithm for words, creates morpheme boundaries marked by symbol #
     def linearize_word(X):
@@ -384,13 +387,13 @@ class PhraseStructure:
         return {f.split(':')[1] for f in X.features if f.startswith('!wCOMP')}
 
     def positive_spec_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('!SPEC')}
+        return {f.split(':')[1] for f in X.features if f.startswith('+SPEC')}
 
     def negative_spec_selection(X):
         return {f.split(':')[1] for f in X.features if f.startswith('-SPEC')}
 
     def positive_comp_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('!COMP')}
+        return {f.split(':')[1] for f in X.features if f.startswith('+COMP')}
 
     def negative_comp_selection(X):
         return {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
@@ -406,7 +409,7 @@ class PhraseStructure:
             return X.phonological_exponent
         elif X.zero_level():
             return '(' + ' '.join([f'{x}' for x in X.const]) + ')'
-        return '[' + ' '.join([f'{x}' for x in X.const]) + ']' + X.get_chain_subscript()
+        return f'[_{X.head().lexical_category()}P ' + ' '.join([f'{x}' for x in X.const]) + ']' + X.get_chain_subscript()
 
     def get_chain_subscript(X):
         if X.chain_index != 0:
@@ -558,7 +561,7 @@ def run_study(ld, sm):
     sm.log_file.write(f'\nTOTAL ERRORS: {n_total_errors}')
 
 
-ld = LanguageData()                 #   Instantiate the language data object
-ld.read_dataset('dataset2.txt')     #   Name of the dataset file processed by the script, reads the file
-sm = SpeakerModel()                 #   Create default speaker model, would be language-specific in a more realistic model
-run_study(ld, sm)                   #   Runs the study
+ld = LanguageData()                         #   Instantiate the language data object
+ld.read_dataset('dataset_template2.txt')    #   Name of the dataset file processed by the script, reads the file
+sm = SpeakerModel()                         #   Create default speaker model, would be language-specific in a more realistic model
+run_study(ld, sm)                           #   Runs the study
