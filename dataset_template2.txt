@@ -1,3 +1,4 @@
+
 #
 # Example dataset for Template2
 #
@@ -86,12 +87,12 @@ Numeration=T,the,dog,bark,frequently
 the dog bark#T frequently
 frequently the dog bark#T
 
-# 17b
+# 18
 Numeration=the,angry,dog,bark,frequently
 the angry dog bark frequently
 frequently the angry dog bark
 
-# 18 (Adjunction, transitive clause)
+# 19 (Adjunction, transitive clause)
 Numeration=T,the,dog,v,bite,the,man,frequently
 the dog bite#v#T the man frequently
 the dog bite#v#T frequently the man
@@ -100,15 +101,15 @@ the man bite#v#T the dog frequently
 the man bite#v#T frequently the dog
 frequently the man bite#v#T the dog
 
-# 19 (Adjunction, adjective inside DP)
+# 20 (Adjunction, adjective inside DP)
 Numeration=the,angry,dog
 the angry dog
 
-# 20 (Adjunction, adjective inside DP, in a finite clause)
+# 21 (Adjunction, adjective inside DP, in a finite clause)
 Numeration=T,the,angry,dog,bark
 the angry dog bark#T
 
-# 21 (very long calculations, tagged out)
+# X (very long calculations, tagged out)
 # Numeration=the,dog,bite,the,man,in,the,city
 
 # 22 (Right-adjunction of PP to VP)
@@ -119,7 +120,22 @@ the city bark in the dog
 # 23 (Right-adjunction and wh-extraction)
 Numeration=C(wh),the,dog,did,bark,in,which,city
 
-# 24 (Worst case simulations)
+# 24 (Additional tests for Table 1)
+Numeration=the
+
+# 25
+Numeration=the,man
+
+# 26
+Numeration=the,dog,bark
+
+# 27
+Numeration=C,the,angry,dog,bite,T,v,the,man
+
+# 28
+Numeration=the,dog,bite,the,man,in,the,city
+
+# X (Worst case simulations)
 #Numeration=a
 #Numeration=a,b
 #Numeration=a,b,c
@@ -127,6 +143,6 @@ Numeration=C(wh),the,dog,did,bark,in,which,city
 #Numeration=a,b,c,d,a
 #Numeration=a,b,c,d,a,b
 
-# 25 (embedded finite clause, 15 million calculations)
+# X (embedded finite clause, 15 million calculations)
 # Numeration=C,the,man,T,believe,that,T,the,dog,bark
 # C the man believe#T that the dog bark#T
