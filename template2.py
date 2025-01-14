@@ -2,7 +2,8 @@
 # Template script for Brattico, P. (2024). Computational generative grammar and complexity.
 #
 # Implements a simple entry-point script for the mechanical justification of grammars
-#
+# Source code: https://github.com/pajubrat/Templates, script template2.py
+# Documentation: https://github.com/pajubrat/Templates/blob/main/docs/Computational%20generative%20grammar%20and%20complexity.pdf
 
 import itertools
 

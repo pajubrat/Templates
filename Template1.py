@@ -61,10 +61,10 @@ class SpeakerModel:
         self.n_derivations = 0
         self.derivational_search_function({self.LexicalRetrieval(item) for item in sentence.split(' ')})
 
-    # Searches through all derivations defined by the grammar (here, Merge)
+    # Searches through all derivations defined by the grammar
     def derivational_search_function(self, sWM):
         if len(sWM) == 1:                                   #   If there is only one phrase structure object in the working memory
-            self.final_output(next(iter(sWM)))              #   stop the derivation and consider it a finished derivation,
+            self.final_output(sWM)                          #   stop the derivation and consider it a finished derivation,
         else:                                               #   else continue the derivation:
             for X, Y in itertools.combinations(sWM, 2):     #   (1) get all combinations of two objects in the working memory
                 for OP in self.syntactic_operations:        #   (2) consider all syntactic operations available in the grammar

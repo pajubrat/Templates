@@ -1,6 +1,8 @@
 import itertools
 
 # Template script for § 2.2, Brattico, P. (2024). Computational generative grammar.
+# https://github.com/pajubrat/Templates
+# template2_2.py
 
 class PhraseStructure:
     """Simple asymmetric binary-branching bare phrase structure formalism"""
@@ -69,9 +71,12 @@ b = PhraseStructure()
 b.phonological_exponent = 'b'
 c = PhraseStructure()
 c.phonological_exponent = 'c'
+d = PhraseStructure()
+d.phonological_exponent = 'd'
+
 
 # Initial lexical feed (set of primitive constituents from root lexicon) for the derivation
-Numeration = {a, b, c}
+Numeration = {a, b, c, d}
 
 # Create all derivations from the numeration
 derivational_search_function(Numeration)

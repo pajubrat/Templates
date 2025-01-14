@@ -1,6 +1,7 @@
 #
 # Entry point for a recognition grammar
-#
+# https://github.com/pajubrat/Templates
+# template4.py
 
 import itertools
 
@@ -207,7 +208,7 @@ class SpeakerModel:
             self.process_final_output(sentence, X)
         else:
             Y = self.lexicon.lexical_retrieval(sentence[index])
-            for i, right_edge in enumerate(X.right_edge()):
+            for i in range(0, len(X.right_edge())):
                 X_ = X.root().copy()
                 right_edge_ = X_.right_edge()[i]
                 new_X = right_edge_.MergeRight(Y)
@@ -253,6 +254,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()
-ld.read_dataset('dataset.txt')
+ld.read_dataset('dataset_template4.txt')
 sm = SpeakerModel()
 run_study(ld, sm)
