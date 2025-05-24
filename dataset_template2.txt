@@ -109,7 +109,7 @@ the angry dog
 Numeration=T,the,angry,dog,bark
 the angry dog bark#T
 
-# X (very long calculations, tagged out)
+# 21b (very long calculations, tagged out)
 # Numeration=the,dog,bite,the,man,in,the,city
 
 # 22 (Right-adjunction of PP to VP)
@@ -135,7 +135,7 @@ Numeration=C,the,angry,dog,bite,T,v,the,man
 # 28
 Numeration=the,dog,bite,the,man,in,the,city
 
-# X (Worst case simulations)
+# 29 (Worst case simulations)
 #Numeration=a
 #Numeration=a,b
 #Numeration=a,b,c
@@ -143,6 +143,6 @@ Numeration=the,dog,bite,the,man,in,the,city
 #Numeration=a,b,c,d,a
 #Numeration=a,b,c,d,a,b
 
-# X (embedded finite clause, 15 million calculations)
+# 30 (embedded finite clause, 15 million calculations)
 # Numeration=C,the,man,T,believe,that,T,the,dog,bark
 # C the man believe#T that the dog bark#T

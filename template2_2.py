@@ -10,7 +10,7 @@ class PhraseStructure:
         self.const = (X, Y)       		# Left and right daughter constituents, in an ordered tuple
         self.features = set()     		# Lexical features, a set
         self.mother = None        		# Mother (immediately dominating) node
-        if X:                           # Create mother-of dependencies for daughters
+        if X:                           	# Create mother-of dependencies for daughters
             X.mother = self
         if Y:
             Y.mother = self
@@ -64,7 +64,7 @@ def process_final_output(sWM):
     finished derivations."""
     print(f'{sWM.pop()}')
 
-# Create three primitive phrase structure objects
+# Create four primitive phrase structure objects
 a = PhraseStructure()
 a.phonological_exponent = 'a'
 b = PhraseStructure()
@@ -73,7 +73,6 @@ c = PhraseStructure()
 c.phonological_exponent = 'c'
 d = PhraseStructure()
 d.phonological_exponent = 'd'
-
 
 # Initial lexical feed (set of primitive constituents from root lexicon) for the derivation
 Numeration = {a, b, c, d}
