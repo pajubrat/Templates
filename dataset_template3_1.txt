@@ -1,0 +1,164 @@
+
+#
+# Example dataset for Template3
+#
+
+# 2 Intransitive VP
+
+Numeration=the,dog,barks
+the dog barks
+
+# 3 Intransitive VP plus finite T
+
+Numeration=T,the,dog,bark
+the dog bark#T
+
+# 4 Transitive VP
+
+Numeration=the,man,bites*,the,dog
+the man bites* the dog
+the dog bites* the man
+
+# 5 Transitive VP with finite T
+
+Numeration=T,the,man,v,bites,the,dog
+the man bites#v#T the dog
+the dog bites#v#T the man
+
+# 6 Transitive VP with AUX/T
+
+Numeration=the,man,did,v,bites,the,dog
+the man did bites#v the dog
+the dog did bites#v the man
+
+# 7 Transitive vP with finite T (=did) and clause typing C
+
+Numeration=C,the,man,did,v,bite,the,dog
+C the man did bite#v the dog
+C the dog did bite#v the man
+
+# 8 Transitive vP with finite T (=did) and clause typing C, with Aux inversion
+
+Numeration=C(wh),the,man,did,v,bite,the,dog
+did#C(wh) the man bite#v the dog
+did#C(wh) the dog bite#v the man
+
+# 9 Intransitive interrogative
+
+Numeration=C(wh),which,dog,did,bark
+which dog did#C(wh) bark
+
+# 10 Transitive interrogative
+
+Numeration=C(wh),the,man,did,v,bite,which,dog
+which dog did#C(wh) the man bite#v
+which man did#C(wh) the dog bite#v
+which dog did#C(wh) bite#v the man
+which man did#C(wh) bite#v the dog
+
+# 11 Adverb adjunction, intransitive clause
+
+Numeration=T,the,dog,bark,frequently
+the dog bark#T frequently
+
+# 12 Adverb adjunction, transitive clause
+
+Numeration=T,the,dog,v,bite,the,man,frequently
+the dog bite#v#T the man frequently
+the dog bite#v#T frequently the man
+the man bite#v#T the dog frequently
+the man bite#v#T frequently the dog
+
+# 13 Adjectie adjunction inside DP
+
+Numeration=the,angry,dog
+the angry dog
+
+# 14 Adjective and adverb adjunction, intransitive clause
+
+Numeration=the,angry,dog,barks,frequently
+the angry dog barks frequently
+
+# 15 Adjetive inside DP, in a finite clause
+
+Numeration=T,the,angry,dog,bark
+the angry dog bark#T
+
+# 16 Right-adjunction of PP to VP
+
+Numeration=the,dog,barks,in,the,city
+the dog barks in the city
+the city barks in the dog
+the dog in the city barks
+the city in the dog barks
+
+# RELATIVE CLAUSES
+
+# 17 Intransitive subject-relativization
+
+Numeration=the,dog,which*,N0,C(rel),T,bark
+the dog N0#which* bark#T
+
+# 18 Robustness tests: missing element
+
+Numeration=the,which*,N0,C(rel),T,bark
+Numeration=the,dog,N0,C(rel),T,bark
+Numeration=the,dog,which*,C(rel),T,bark
+Numeration=the,dog,which*,N0,T,bark
+Numeration=the,dog,which*,N0,C(rel),bark
+Numeration=the,dog,which*,N0,C(rel),T
+
+# 19 Robustness tests: intransitive relaivization with double elements
+
+Numeration=the,the,dog,which*,N0,C(rel),T,bark
+Numeration=the,dog,dog,which*,N0,C(rel),T,bark
+Numeration=the,dog,which*,which*,N0,C(rel),T,bark
+Numeration=the,dog,which*,N0,N0,C(rel),T,bark
+Numeration=the,dog,which*,N0,C(rel),C(rel),T,bark
+Numeration=the,dog,which*,N0,C(rel),T,T,bark
+
+# 20 Inransitive subject-relativization with two verbs, parse found
+
+Numeration=the,dog,which*,N0,C(rel),T,bark,bark
+the dog N0#which* bark#T bark
+ 
+# 21 Transitive subject/object-relativization
+
+Numeration=dog,which*,N0,C(rel),T,v,bite,the,man
+
+man N0#which* bite#v#T the dog
+dog N0#which* bite#v#T the man
+man N0#which* the dog bite#v#T
+dog N0#which* the man bite#v#T
+
+# 22 Robustness tests: missing element
+
+Numeration=dog,N0,C(rel),T,v,bite,the,man
+Numeration=dog,which*,C(rel),T,v,bite,the,man
+Numeration=dog,which*,N0,T,v,bite,the,man
+Numeration=dog,which*,N0,C(rel),v,bite,the,man
+Numeration=dog,which*,N0,C(rel),T,bite,the,man
+Numeration=dog,which*,N0,C(rel),T,v,the,man
+Numeration=dog,which*,N0,C(rel),T,v,bite,man
+Numeration=dog,which*,N0,C(rel),T,v,bite
+
+# 23 Robustness tests: double elmenet
+
+Numeration=the,the,man,did,v,bites,the,dog
+Numeration=the,man,man,did,v,bites,the,dog
+Numeration=the,man,did,did,v,bites,the,dog
+Numeration=the,man,did,v,v,bites,the,dog
+Numeration=the,man,did,v,bites,bites,the,dog
+Numeration=the,man,did,v,bites,the,the,dog
+Numeration=the,man,did,v,bites,the,dog,dog
+
+# 24 Extra arguments (DPs), intransitive relative clause
+
+Numeration=the,dog,the,dog,which*,N0,C(rel),T,bark
+Numeration=the,dog,which*,N0,which*,N0,C(rel),T,bark
+
+# 25 Extra arguments (DPs), transitive relative clause
+# Too much calculations, knocked out
+# Numeration=dog,which*,N0,C(rel),T,v,bite,the,man,the,man
+
+

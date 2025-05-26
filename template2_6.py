@@ -248,11 +248,11 @@ class PhraseStructure:
 
     def phrasal_A_bar_movement(X):
         """Simple algorithm for phrasal Ā-movement with preconditions"""
-        if X.left().operator() and X.left().complement().minimal_search("wh"):
+        if X.left().operator() and X.left().complement().internal_search("wh"):
             PhraseStructure.log_report += f'\nPhrasal A-bar movement by ' \
                                           f'{X.left()} targeting ' \
-                                          f'{X.left().complement().minimal_search("wh")}\n'
-            return X.left().complement().minimal_search('wh').chaincopy().Merge(X)
+                                          f'{X.left().complement().internal_search("wh")}\n'
+            return X.left().complement().internal_search('wh').chaincopy().Merge(X)
         return X
 
     def operator(X):

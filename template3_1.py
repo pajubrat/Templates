@@ -1,10 +1,11 @@
 
-# template3.py
-# Template script for YT lecture series "kielitieteen menetelmiä", lectures 21
+# template3_1.py
+# Improved and linguistically more informed/plausible template script for YT lecture series "kielitieteen menetelmiä", lecture 21
 # https://youtube.com/playlist?list=PL35upitLda1fkGLFrdYEEy5P1LBq74dZ3&si=hz8nCLqfuwXguUv7
 # An analysis of Finnish relative clauses
 
 import itertools
+import sys
 
 # Defines a simple root lexicon as a dictionary
 lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
@@ -13,20 +14,20 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
            'bark': {'V', 'V/INTR'},
            'barks': {'V', 'V/INTR'},
            'bites*': {'V', '+COMP:D', '+SPEC:D'},
-           'bite': {'V', 'V/TR', '+COMP:D'},
-           'bites': {'V', 'V/TR', '+COMP:D'},
+           'bite': {'V', 'V/TR'},
+           'bites': {'V', 'V/TR'},
            'bite*': {'V', 'V/TR'},
            'which': {'D', 'WH', 'OP'},
            'which*': {'D', 'REL', 'OP', 'PC:#X', '+wCOMP:N0'},
            'man': {'N'},
            'N0': {'N', 'N0'},
-           'angry': {'A', 'α:N', 'λ:L'},
-           'frequently': {'Adv', 'α:V', 'λ:R'},
+           'angry': {'A', 'α:N'},
+           'frequently': {'Adv'},
            'city': {'N'},
            'from': {'P'},
            'in': {'P', 'α:V'},
            'ed': {'T', 'PC:#X', '+wCOMP:V'},
-           'T': {'T', 'PC:#X', 'EPP', '+SPEC:D', '+wCOMP:V'},
+           'T': {'T', 'PC:#X', 'EPP', '+wCOMP:V'},
            'did': {'T', 'EPP', 'AUX'},
            'does': {'T', 'AUX'},
            'was': {'T', 'EPP', 'AUX'},
@@ -37,17 +38,16 @@ lexicon = {'a': {'a'}, 'b': {'b'}, 'c': {'c'}, 'd': {'d'},
 
 # Lexical redundancy rules add features to lexical items based on their feature content
 # This creates speaker lexicons
-lexical_redundancy_rules = {'D': {'-COMP:Adv', '+COMP:N', '-SPEC:N', '-COMP:D', '-SPEC:D', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:P', '-SPEC:T/inf', '-SPEC:Adv'},
-                            'V': {'-SPEC:C', '-COMP:V', '-SPEC:N', '-SPEC:T', '-SPEC:T/inf', '-COMP:A', '-COMP:N', '-COMP:T'},
-                            'Adv': {'-COMP:D', '-COMP:N', '-SPEC:V', '-SPEC:v', '-SPEC:T', '-SPEC:D', '-COMP:Adv', '-COMP:A'},
-                            'P': {'+COMP:D', '-COMP:Adv', '-SPEC:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:N', '-SPEC:V', '-SPEC:v', '-SPEC:T/inf', 'λ:R'},
-                            'C': {'+COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:C', '-SPEC:N', '-SPEC:T/inf'},
-                            'A': {'-COMP:D', '-SPEC:Adv', '-COMP:Adv', '-SPEC:D', '-SPEC:V', '-COMP:V', '-COMP:T', '-SPEC:T', '-SPEC:C', '-COMP:C'},
-                            'N': {'-COMP:D', '-SPEC:N', '-SPEC:D', '-COMP:N', '-COMP:A', '-SPEC:Adv', '-COMP:V', '-COMP:T', '-COMP:Adv', '-SPEC:V', '-SPEC:T', '-SPEC:C', '-SPEC:P', '-SPEC:T/inf'},
-                            'T': {'+COMP:V', '-COMP:Adv', '-SPEC:C', '-SPEC:T', '-SPEC:V', '-SPEC:T/inf', '-ε'},
-                            'v': {'V', '+COMP:V', '+SPEC:D', '-COMP:Adv', '-COMP:A', '-COMP:v',  '-SPEC:T/inf', '+wCOMP:V', '-ε'},
-                            'V/INTR': {'-COMP:D', '+SPEC:D'},
-                            'V/TR': {'-SPEC:D', '+COMP:D'}
+lexical_redundancy_rules = {'D': {'+COMP:N'},
+                            'Adv': {'+SPEC:Adv,ø', 'λ:R', 'α:V'},
+                            'P': {'+COMP:D', 'λ:R'},
+                            'C': {'+COMP:T', '+SPEC:D,ø'},
+                            'A': {'+COMP:N,ø', 'λ:L', 'α:N'},
+                            'N': {'+COMP:C,P,ø,C(rel)', '+SPEC:A,ø'},
+                            'T': {'+COMP:V', '+SPEC:D'},
+                            'v': {'V', '+COMP:V', '+SPEC:D', '+wCOMP:V', '-ε'},
+                            'V/INTR': {'+SPEC:D'},
+                            'V/TR': {'+COMP:D'}
                             }
 
 major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd']
@@ -62,13 +62,16 @@ def tset(X):
     else:
         return {X}
 
+def print_ordered_lst(lst):
+    return ', '.join(sorted([f'{x}' for x in lst], key=str.casefold, reverse=True))
+
 def print_lst(lst):
     return ', '.join([f'{x}' for x in lst])
 
 def print_constituent_lst(sWM):
-    str = f'{print_lst([x for x in sWM if not x.mother])}'
+    str = f'{print_ordered_lst([x for x in sWM if not x.mother])}'
     if [x for x in sWM if x.mother]:
-        str += f' + {{ {print_lst([x for x in sWM if x.mother])} }}'
+        str += f' + {{ {print_ordered_lst([x for x in sWM if x.mother])} }}'
     return str
 
 
@@ -101,11 +104,18 @@ class Lexicon:
     def get_phonology(self, name):
         return next((x[5:] for x in self.speaker_lexicon[name] if x.startswith('PHON:')), name)
 
+    def __str__(self):
+        stri = ''
+        for lex in self.speaker_lexicon.keys():
+            stri += f'{lex} {" ".join([f for f in list(self.speaker_lexicon[lex])])}\n'
+        return stri
+
 class PhraseStructure:
     """Simple asymmetric binary-branching bare phrase structure formalism"""
     logging = None          # class variable: whether logging is on or off, affects calculation speed
     chain_index = 1         # class variable: creates chain indexes
     logging_report = ''     # class variable: used to store logging information during the derivation
+    logging_report_detailed = ''
     def __init__(self, X=None, Y=None):
         self.const = (X, Y)             # Constituents are represented as tuples
                                         # Alternatives: list; axiomatic left/right constituents; dictionary
@@ -147,7 +157,7 @@ class PhraseStructure:
         """Defines the notion of phrasal constituent"""
         return X.left() and X.right()
 
-    def contains_features(X, fset):
+    def scan_features(X, fset):
         if fset <= X.features:
             return True
         if X.left():
@@ -174,6 +184,7 @@ class PhraseStructure:
         return Y
 
     def chaincopy(X):
+        """Grammatical copying operation, with phonological silencing"""
         """Grammatical copying operation, with phonological silencing"""
         if not X.zero_level():  # Head movement does not create chain indexes
             X.label_chain()     # Create chain information, not part of the theory
@@ -210,11 +221,9 @@ class PhraseStructure:
                 return False                                            # main article.
             if X.zero_level():                                          # If X is zero-level, then Y must satisfy its
                 return X.complement_subcategorization(Y)                # subcategorization features under [X Y(P)]
-            elif Y.zero_level():                                        # If Y is zero-level, then
-                return Y.complement_subcategorization(None)             # Y cannot require a complement,
-            else:                                                       # else
-                return Y.head().specifier_subcategorization(X)          # X must satisfy the specifier requirements
-                                                                        # of the head of YP.
+            if Y.zero_level():                                          # If Y is zero-level, then
+                return Y.complement_subcategorization(None) and Y.head().specifier_subcategorization(X)
+            return Y.head().specifier_subcategorization(X)
 
     def HeadMovement(X, Y):
         """Implementation for head movement"""
@@ -249,17 +258,17 @@ class PhraseStructure:
         if X.head().scope_marker() and \
                 X.head().operator() and \
                 X.head().complement() and \
-                X.head().complement().minimal_search('OP') and \
-                not X.head().complement().minimal_search('OP').elliptic:
-            PhraseStructure.logging_report += f'\n\t\t + Phrasal A-bar chain by {X.head()}° targeting {X.head().complement().minimal_search("OP")}'
-            return X.head().complement().minimal_search('OP').chaincopy().Merge(X)
+                X.head().complement().internal_search('OP') and \
+                not X.head().complement().internal_search('OP').elliptic:
+            PhraseStructure.logging_report += f'\n\t\t + Phrasal A-bar chain by {X.head()}° targeting {X.head().complement().internal_search("OP")}'
+            return X.head().complement().internal_search('OP').chaincopy().Merge(X)
         return X
 
     def operator_variable_condition(X):
         """This function simulates operator-variable interpretations"""
         if X.zero_level():
-            if X.operator() and X.scope_marker() and not X.contains_features({'AUX'}):
-                if not X.complement() or not X.complement().minimal_search('OP'):
+            if X.operator() and X.scope_marker() and not X.scan_features({'AUX'}):
+                if not X.complement() or not X.complement().internal_search('OP'):
                     return False
             return True
         else:
@@ -336,7 +345,7 @@ class PhraseStructure:
             PhraseStructure.chain_index += 1
             X.chain_index = PhraseStructure.chain_index
 
-    def minimal_search(X, feature):
+    def internal_search(X, feature):
         """One implementation for minial search"""
         while X:
             if X.zero_level():                          # [X YP], search YP
@@ -398,27 +407,43 @@ class PhraseStructure:
 
     def complement_subcategorization(X, Y):
         """Complement subcategorization under [X Y]"""
-        if not Y:                                   # If there is no complement, then
-            return not X.positive_comp_selection()  # there cannot be positive comp selection
-        return (X.positive_comp_selection() <= Y.head().features) and \
-               not (X.negative_comp_selection() & Y.head().features)
-        # ^ Test both positive and negative complement selection
+        if (not Y and (not X.selected_features('+COMP:') or 'ø' in X.selected_features('+COMP:'))) or \
+                (Y and X.selected_features('+COMP:') and
+                 Y.head().check(X.selected_features('+COMP:')) and
+                 Y.head().subcategorization()):
+            return True
+        PhraseStructure.logging_report_detailed += f'\n\t*Complement selection violation by |{X}|° ({X.get_selection_features()})'
 
     def specifier_subcategorization(X, Spec=None):
         """Specifier subcategorization under [XP YP]"""
         if not Spec:
             if not X.specifier():
-                return not X.positive_spec_selection()
+                if X.selected_features('+SPEC:') and 'ø' not in X.selected_features('+SPEC:'):
+                    PhraseStructure.logging_report_detailed += f'\n\t*Missing specifier selection violation by |{X}|° ({X.get_selection_features()})'
+                    return False
+                return True
             Spec = X.specifier()
 
         # Deletes multiple specifier constructions (ad hoc rule). The real principle has to do with
         # thematic roles: formal specifier positions are unable to assign thematic roles (semantics)
         if Spec and Spec.mother and Spec.mother.sister() and not Spec.mother.sister().zero_level():
+            PhraseStructure.logging_report_detailed += f'\n\t*Multiple  specifier selection violation by |{X}|° ({X.get_selection_features()})'
             return False
 
-        return X.positive_spec_selection() <= Spec.head().features and \
-               not (X.negative_spec_selection() & Spec.head().features)
-        # ^ Test positive and negative specifier selection
+        if not X.selected_features('+SPEC:') or not Spec.head().check(X.selected_features('+SPEC:')):
+            PhraseStructure.logging_report_detailed += f'\n\t*Positive specifier selection violation by |{X}|° ({X.get_selection_features()}) against {Spec}'
+            return False
+        return True
+
+    def check(X, features):
+        return {f for f in features if f != 'ø'} & X.features
+
+    def selected_features(X, type):
+        s = set()
+        for f in X.features:
+            if f.startswith(type):
+                s = s | set(f.split(':')[1].split(','))
+        return s
 
     def specifier(X):
         """
@@ -484,6 +509,9 @@ class PhraseStructure:
         """Adjunct linearization to right is controlled by a lexical feature"""
         return 'λ:R' in X.head().features
 
+    def get_selection_features(X):
+        return ' '.join([x for x in X.features if x.startswith('+COMP:') or x.startswith('+SPEC:')])
+
     def isRoot(X):
         """Roots are constituents that do not have mothers"""
         return not X.mother
@@ -491,22 +519,8 @@ class PhraseStructure:
     def mandateDirectHeadMerge(X):
         return 'ε' in X.features
 
-    # Functions for parsing complex features
-    #
     def obligatory_wcomplement_features(X):
         return {f.split(':')[1] for f in X.features if f.startswith('+wCOMP')}
-
-    def positive_spec_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('+SPEC')}
-
-    def negative_spec_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('-SPEC')}
-
-    def positive_comp_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('+COMP')}
-
-    def negative_comp_selection(X):
-        return {f.split(':')[1] for f in X.features if f.startswith('-COMP')}
 
     def license_adjunction(X):
         return next((f.split(':')[1] for f in X.features if f.startswith('α:')), None)
@@ -519,7 +533,7 @@ class PhraseStructure:
             return X.phonological_exponent
         elif X.zero_level():
             return '(' + ' '.join([f'{x}' for x in X.const]) + ')'
-        return f'[_{X.head().lexical_category()}P ' + ' '.join([f'{x}' for x in X.const]) + ']' + X.get_chain_subscript()
+        return f'[{X.head().lexical_category()}P ' + ' '.join([f'{x}' for x in X.const]) + ']' + X.get_chain_subscript()
 
     def get_chain_subscript(X):
         if X.chain_index != 0:
@@ -561,10 +575,11 @@ class SpeakerModel:
             for Preconditions, OP, n, name in self.syntactic_operations:
                 for SO in itertools.permutations(sWM, n):
                     if Preconditions(*SO):
-                        PhraseStructure.logging_report += f'\n\t{name}({print_lst(SO)})'
+                        PhraseStructure.logging_report += f'\t{name.upper()}({print_lst(SO)})'
                         new_sWM = {x for x in sWM if x not in set(SO)} | tset(OP(*tcopy(SO)))
                         self.consume_resource(new_sWM, sWM)
                         self.derivational_search_function(new_sWM)
+            self.log_file.write('.')
 
     @staticmethod
     def derivation_is_complete(sWM):
@@ -580,26 +595,26 @@ class SpeakerModel:
         Modify to enhance readability and to reflect the operations available in the grammar
         """
         self.n_steps += 1
-        self.log_file.write(f'{self.n_steps}.\n\n')
-        self.log_file.write(f'\t{print_constituent_lst(old_sWM)}\n')
-        self.log_file.write(f'{PhraseStructure.logging_report}')
-        self.log_file.write(f'\n\t= {print_constituent_lst(new_sWM)}\n\n')
+        self.log_file.write(f'\n\n{self.n_steps}.\t{{ {print_constituent_lst(old_sWM)} }}\n')
+        self.log_file.write(f'{PhraseStructure.logging_report} =')
+        self.log_file.write(f'\n\t{{ {print_constituent_lst(new_sWM)} }}')
         PhraseStructure.logging_report = ''
+        PhraseStructure.logging_report_detailed = ''
 
     def process_final_output(self, sWM):
         PhraseStructure.chain_index = 0
-        self.log_file.write(f'\t{print_constituent_lst(sWM)}\n')
+        PhraseStructure.logging_report_detailed = ''
         for X in sWM:
             if not X.subcategorization() or not X.operator_variable_condition():
-                self.log_file.write('\n\n')
+                self.log_file.write(f'{PhraseStructure.logging_report_detailed}')
                 return
         self.n_accepted += 1
         prefix = f'{self.n_accepted}'
         output_sentence = f'{self.root_structure(sWM).linearize()}'
         print(f'\n({prefix}.)\n{output_sentence}\n{print_constituent_lst(sWM)}\n')   # Print the output
-        self.log_file.write(f'\t^ ACCEPTED: {output_sentence}')
+        self.log_file.write(f'\n=>\t/{output_sentence[:-1]}/ accepted.')
         self.output_data.add(output_sentence.strip())
-        self.log_file.write('\n\n')
+        self.log_file.write('\n')
 
 class LanguageData:
     """Stores and manipulates all data used in the simulation"""
@@ -630,7 +645,7 @@ class LanguageData:
 
     def start_logging(self):
         log_file = 'log.txt'
-        log_file = open(log_file, 'w')
+        log_file = open(log_file, 'w', encoding='utf-8')
         PhraseStructure.logging = log_file
         return log_file
 
@@ -643,6 +658,7 @@ class LanguageData:
         if errors > 0:
             print(f'\tShould not generate: {overgeneralization}')
             print(f'\tShould generate: {undergeneralization}')
+            sys.exit()
         return errors
 
 # Run one whole study as defined by the dataset file, itself containing
@@ -652,13 +668,14 @@ def run_study(ld, sm):
     n_dataset = 0       #   Number of datasets in the experiment (counter)
     n_total_errors = 0  #   Count the number of errors in the whole experiment (counter)
     n_total_steps = 0   #   Number of calculations steps in the whole experiment
+    sm.log_file.write(f'{sm.lexicon}')
     for numeration, gold_standard_dataset in ld.study_dataset:
         n_dataset += 1
-        print(f'Dataset {n_dataset}:')
+        print(f'Dataset {n_dataset} ({numeration}):')
         sm.log_file.write('\n---------------------------------------------------\n')
         sm.log_file.write(f'Dataset {n_dataset}:\n')
         sm.log_file.write(f'Numeration: {numeration}\n')
-        sm.log_file.write(f'Predicted outcome: {gold_standard_dataset}\n\n\n')
+        sm.log_file.write(f'Predicted outcome: {gold_standard_dataset}')
         sm.derive(numeration)
         n_total_errors += ld.evaluate_experiment(sm.output_data, gold_standard_dataset, sm.n_steps)
         n_total_steps += sm.n_steps
@@ -667,6 +684,6 @@ def run_study(ld, sm):
 
 
 ld = LanguageData()                         #   Instantiate the language data object
-ld.read_dataset('dataset_template3.txt')    #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset_template3_1.txt')    #   Name of the dataset file processed by the script, reads the file
 sm = SpeakerModel()                         #   Create default speaker model, would be language-specific in a more realistic model
 run_study(ld, sm)                           #   Runs the study
