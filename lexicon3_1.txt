@@ -1,0 +1,72 @@
+#s	
+# Lexicon for script template3_1.py
+#
+# lexicon format:
+# key:	value (set of features, as strings)
+
+# AD HOC -------------------------------------------------
+a ::			a
+b ::			b 
+c ::			c 
+d ::			d
+
+# ENGLISH ------------------------------------------------
+the ::			D LANG:EN
+dog ::			N LANG:EN
+bark ::			V V/INTR LANG:EN
+barks ::		V V/INTR LANG:EN
+bites* :: 		V COMP:D SPEC:D LANG:EN
+bite :: 		V V/TR LANG:EN
+bites :: 		V V/TR LANG:EN
+bite* :: 		V V/TR LANG:EN
+which ::		D WH OP LANG:EN
+which* :: 		D REL OP PC:#X +wCOMP:N0 LANG:EN
+man :: 			N LANG:EN
+N0 :: 			N N0 LANG:EN
+angry :: 		A α:N LANG:EN
+frequently :: 	Adv LANG:EN
+city :: 		N LANG:EN
+from :: 		P LANG:EN
+in :: 			P α:V LANG:EN
+ed :: 			T PC:#X +wCOMP:V LANG:EN
+did :: 			T EPP AUX LANG:EN
+does :: 		T AUX LANG:EN
+was :: 			T EPP AUX LANG:EN
+
+# FINNISH --------------------------------------------
+koira	::		N NOM LANG:FI
+puri	::		V V/TR LANG:FI
+miesta	::		N PAR LANG:FI
+
+
+# UNIVERSAL ------------------------------------------
+D ::			D
+C :: 			C Fin
+C(wh) :: 		C Fin C(wh) PC:#X +wCOMP:T OP WH SCOPE
+C(rel) :: 		C Fin C(rel) REL SCOPE OP α:N λ:R PHON:0
+T :: 			T Fin
+v :: 			v κ PC:#X +wCOMP:V
+
+#
+# Lexical reducancy rules
+#
+# format
+# trigger > new features
+
+D				=> 		COMP:N
+Adv				=>		SPEC:Adv,ø λ:R α:V
+P				=> 		COMP:D λ:R κ
+C				=> 		COMP:T SPEC:D,ø
+A				=> 		COMP:N,ø λ:L α:N
+N				=> 		COMP:C,P,ø,C(rel) SPEC:A,ø
+v				=>		V κ COMP:V SPEC:D wCOMP:V -ε
+V/INTR			=> 		SPEC:D
+V/TR			=>		COMP:D
+Fin				=>		κ
+
+T LANG:EN		=> 		COMP:V SPEC:D EPP PC:#X +wCOMP:V
+
+T LANG:FI		=>  	COMP:V SPEC:D EPP PC:#X +wCOMP:V
+PAR LANG:FI		=>		κ:v,P
+NOM LANG:FI		=>		κ:Fin,ø
+

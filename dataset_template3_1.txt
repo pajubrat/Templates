@@ -3,6 +3,14 @@
 # Example dataset for Template3
 #
 
+# --- Finnish ---
+
+# Transitive VP
+Numeration=T,D,koira,v,puri,D,miesta
+koira puri#v#T miesta
+
+END
+
 # 2 Intransitive VP
 
 Numeration=the,dog,barks
