@@ -7,13 +7,29 @@
 import itertools
 import sys
 import copy
-major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Adv', 'T', 'P', 'a', 'b', 'c', 'd']
+major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Dem','Adv', 'T', 'P', 'a', 'b', 'c', 'd']
 
 log_file = open('log.txt', 'w', encoding='utf-8')
 
 # Auxiliary functions used during certain processing steps
-def tcopy(SO):
-    return tuple(x.copy() for x in SO)
+def sWMcopy(sWM, SO):
+    sWM2 = [x.copy() for x in sWM if x not in set(SO)]
+    SO2 = [x.copy() for x in SO]
+    # Updates internal links
+    for x in sWM2 + SO2:
+        update_links(x)
+    return set(sWM2), tuple(SO2)
+
+def update_links(X):
+    if X.adjunct:
+        X.mother = X.mother.isomapping
+    if X.adjuncts:
+        X.adjuncts = {x.isomapping for x in X.adjuncts if x}
+    if X.copied:
+        X.copied = X.copied.isomapping
+    if not X.zero_level():
+        update_links(X.left())
+        update_links(X.right())
 
 def tset(X):
     if isinstance(X, set):
@@ -21,29 +37,28 @@ def tset(X):
     else:
         return {X}
 
-def print_ordered_lst(lst):
-    return ', '.join(sorted([f'{x}' for x in lst], key=str.casefold, reverse=True))
-
 def print_lst(lst):
     return ', '.join([f'{x}' for x in lst])
 
 def print_constituent_lst(sWM):
-    str = f'{print_ordered_lst([x for x in sWM if not x.mother])}'
-    if [x for x in sWM if x.mother]:
-        str += f' + {{ {print_ordered_lst([x for x in sWM if x.mother])} }}'
+    str = f'{print_ordered_lst([x for x in sWM if not x.adjunct])}'
+    if [x for x in sWM if x.adjunct]:
+        str += f' | {print_ordered_lst([x for x in sWM if x.adjunct])}'
     return str
+
+def print_ordered_lst(lst):
+    return ', '.join(sorted([f'{x}' for x in lst], key=str.casefold, reverse=True))
 
 
 class SpeakerLexicon:
-    """Stores lexical knowledge independent of the syntactic phrase structure"""
+    """Stores the lexical knowledge for a group of people"""
     def __init__(self, L, ld):
-        self.speaker_lexicon = dict()                       # Speaker lexicon, as dictionary
+        self.speaker_lexicon = dict()          # Speaker lexicon, as dictionary
         self.create_speaker_lexicon(L, ld)     # Create speaker lexicon
-        self.apply_redundancy_rules(ld.root_lexical_redundancy_rules)
+        self.apply_redundancy_rules(ld)
 
     def create_speaker_lexicon(self, L, ld):
         """Creates a speaker lexicon by applying redundancy rules"""
-
         for lex in ld.root_lexicon.keys():
             features = set(ld.root_lexicon[lex])
             if self.target_language(features, L):
@@ -61,13 +76,13 @@ class SpeakerLexicon:
                 return False
         return True
 
-    def apply_redundancy_rules(self, root_lexical_redundancy_rules):
+    def apply_redundancy_rules(self, ld):
         """Composes the speaker lexicon from the list of words and lexical redundancy rules"""
-        for trigger_features_str in root_lexical_redundancy_rules.keys():
+        for trigger_features_str in ld.root_lexical_redundancy_rules.keys():
             trigger_features = set(trigger_features_str.strip().split(' '))
             for lex in self.speaker_lexicon.keys():
                 if trigger_features <= self.speaker_lexicon[lex]:
-                    self.speaker_lexicon[lex] = self.speaker_lexicon[lex] | root_lexical_redundancy_rules[trigger_features_str]
+                    self.speaker_lexicon[lex] = self.speaker_lexicon[lex] | ld.root_lexical_redundancy_rules[trigger_features_str]
 
     def retrieve(self, name):
         """Retrieves lexical items from the speaker lexicon and wraps them
@@ -105,12 +120,17 @@ class PhraseStructure:
         if Y:                           # ...
             Y.mother = self             # ...
         self.zero = False               # Whether the object is a zero-level object
+        self.elliptic = False           # Ellipsis due to copying
+        self.copied = None              # Copy link
+
+        # Auxiliary properties not part of the empirical theory
         self.adjuncts = set()           # Stores the set of adjuncts adjoined to the constituent
                                         # This is an auxiliary structure that is not part of the theory and simplifies
                                         # certain calculations
-        self.phonological_exponent = '' # Phonological exponent of the constituent, used in printout and linearization
-        self.elliptic = False           # Ellipsis due to copying
+        self.adjunct = False            # Auxiliary assumption, not part of theory
+        self.isomapping = None         # Auxiliary structure for backtracking purposes
         self.chain_index = 0            # Initial chain index
+        self.phonological_exponent = '' # Phonological exponent of the constituent, used in printout and linearization
 
     def left(X):
         """Abstraction for the notion of left daughter"""
@@ -144,6 +164,9 @@ class PhraseStructure:
         if X.right():
             return X.right().scan_features(fset)
 
+    def is_adjunct(X):
+        return X.mother and X not in X.mother.const
+
     def copy(X):
         """Recursive copying for constituents"""
         if not X.terminal():
@@ -157,18 +180,23 @@ class PhraseStructure:
         Y.phonological_exponent = X.phonological_exponent
         Y.features = X.features
         Y.zero = X.zero
+        Y.copied = X.copied
         Y.chain_index = X.chain_index
         Y.elliptic = X.elliptic
-        Y.adjuncts = X.adjuncts.copy()
+        Y.adjuncts = X.adjuncts
+        Y.adjunct = X.adjunct
+        if X.adjunct:
+            Y.mother = X.mother
+        X.isomapping = Y
         return Y
 
     def chaincopy(X):
-        """Grammatical copying operation, with phonological silencing"""
         """Grammatical copying operation, with phonological silencing"""
         if not X.zero_level():  # Head movement does not create chain indexes
             X.label_chain()     # Create chain information, not part of the theory
         Y = X.copy()        # Copying
         X.elliptic = True   # Mark the source elliptic
+        Y.copied = X        # Marking the copy chain
         return Y
 
     def zero_level(X):
@@ -248,9 +276,14 @@ class PhraseStructure:
         if X.zero_level():
             if X.operator() and X.scope_marker() and not X.scan_features({'AUX'}):
                 if not X.complement() or not X.complement().internal_search('OP'):
+                    PhraseStructure.logging_report_detailed += f'\n\t*Operator {X} without variable.'
                     return False
             return True
         else:
+            if X.head().operator() and not X.head().scope_marker():
+                if not X.copied and not X.elliptic and '-INSITU' in X.head().features:
+                    PhraseStructure.logging_report_detailed += f'\n\t*Operator {X} in situ.\n'
+                    return False
             return X.left().operator_variable_condition() and X.right().operator_variable_condition()
 
     def phrasal_A_movement(X):
@@ -310,6 +343,7 @@ class PhraseStructure:
         """Adjunction creates asymmetric constituents with mother-of dependency without
         daughter dependency"""
         X.mother = Y
+        X.adjunct = True
         Y.adjuncts.add(X)   # This is not part of theory, not realistic component, but simplifies printout
         return {X, Y}
 
@@ -327,9 +361,10 @@ class PhraseStructure:
     def external_search(X, fset):
         Origin = X
         while X:
-            for x in (X,) + X.const:
-                if x and x != Origin and fset <= x.features:
-                    return x
+            if X != Origin:
+                for x in (X,) + X.const:
+                    if x and x != Origin and fset <= x.features:
+                        return x
             X = X.mother
 
     def internal_search(X, feature):
@@ -379,16 +414,20 @@ class PhraseStructure:
         """Word-internal subcategorization which applies when heads are merged directly
         to create zero-level constituents."""
         if X.terminal():
-            if X.obligatory_wcomplement_features():
+            if X.obligatory_wcomplement_features() and 'PC:_X_' not in X.features:
+                PhraseStructure.logging_report_detailed += f'\n\t*|{X}| is a bound morpheme'
                 return False
         if X.left() and X.right():
             if not X.right().w_selects(X.left()):
+                PhraseStructure.logging_report_detailed += f'\n\t*w-selection violation by |{X}|°'
                 return False
         if X.left() and not X.left().terminal():
             if not X.left().w_subcategorization():
+                PhraseStructure.logging_report_detailed += f'\n\t*w-selection violation by |{X}|°'
                 return False
         if X.right() and not X.right().terminal():
             if not X.right().w_subcategorization():
+                PhraseStructure.logging_report_detailed += f'\n\t*w-selection violation by |{X}|°'
                 return False
         return True
 
@@ -425,7 +464,37 @@ class PhraseStructure:
     def check(X, features):
         return {f for f in features if f != 'ø'} & X.features
 
+    def phi_check(X):
+        """Verifies that there are no phi-feature mismatches (concord, agreement)"""
+
+        # π triggers agreement requirement
+        if X.zero_level():
+            if 'π' in X.features:
+                Y = X.external_search({'D'})
+                if Y:
+                    if not X.Agree(Y, 'PHI:'):
+                        PhraseStructure.logging_report_detailed += f'\n\t*Agreement error between |{X}| and |{Y}|'
+                        return False
+            return True
+        else:
+            return X.left().phi_check() and X.right().phi_check()
+
+    def Agree(X, Y, fclass):
+        """Verifies that X and Y do not contain type-value mismatches in class [fclass]"""
+        # Consider features from class [fclass]
+        Xfeatures = {f for f in X.features if f.startswith(fclass)}
+        Yfeatures = {f for f in Y.features if f.startswith(fclass)}
+        for Xf in Xfeatures:
+            for Yf in Yfeatures:
+                # Detect mismatch
+                if Xf.split(':')[1] == Yf.split(':')[1] and Xf.split(':')[2] != Yf.split(':')[2]:
+                    return False
+        return True
+
     def case_checking(X):
+        # Only base-positions are checked for case configurations
+        if X.copied:
+            return True
         # Recursion
         if not X.zero_level():
             return X.left().case_checking() and X.right().case_checking()
@@ -490,7 +559,7 @@ class PhraseStructure:
 
     def bound_morpheme(X):
         """Definition for bound morpheme"""
-        return 'PC:#X' in X.features
+        return 'PC:#X' in X.features and 'PC:_X_' not in X.features
 
     def auxiliary(X):
         return 'AUX' in X.features
@@ -550,11 +619,17 @@ class PhraseStructure:
         """# Defines the major lexical categories used in all printouts"""
         return next((f for f in major_lexical_categories if f in X.features), '?')
 
-#
-# Model of the speaker which constitutes the executive layer
-# In more realistic models the speaker models must be language-specific
-#
+class LogicalForm():
+    def __init__(self):
+        pass
+
+    def interface_check(self, X):
+        return X.subcategorization() and \
+               X.operator_variable_condition() and \
+               X.case_checking() and X.phi_check()
+
 class SpeakerModel():
+    """Models a group of speakers (e.g., language, dialect, age)"""
     def __init__(self, ld, language):
         # List of all syntactic operations available in the grammar
         self.syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.MergeComposite, 2, 'Merge'),
@@ -563,7 +638,8 @@ class SpeakerModel():
         self.n_accepted = 0                             # Number of accepted sentences
         self.n_steps = 0                                # Number of steps consumed
         self.output_data = set()                        # A set containing all output data
-        self.lexicon = SpeakerLexicon(language, ld)         # Lexicon
+        self.lexicon = SpeakerLexicon(language, ld)     # Speaker lexicon
+        self.LF = LogicalForm()                         # Syntax-semantics interface
         self.language = language
 
     def derive(self, numeration):
@@ -582,7 +658,8 @@ class SpeakerModel():
                 for SO in itertools.permutations(sWM, n):
                     if Preconditions(*SO):
                         PhraseStructure.logging_report += f'\t{name.upper()}({print_lst(SO)})'
-                        new_sWM = {x for x in sWM if x not in set(SO)} | tset(OP(*tcopy(SO)))
+                        sWM_, SO_ = sWMcopy(sWM, SO)
+                        new_sWM = sWM_ | tset(OP(*SO_))
                         self.consume_resource(new_sWM, sWM)
                         self.derivational_search_function(new_sWM)
             log_file.write('.')
@@ -614,10 +691,9 @@ class SpeakerModel():
         PhraseStructure.chain_index = 0
         PhraseStructure.logging_report_detailed = ''
         for X in sWM:
-            if not X.subcategorization() or not X.operator_variable_condition() or not X.case_checking():
+            if not self.LF.interface_check(X):
                 log_file.write(f'{PhraseStructure.logging_report_detailed}')
                 return
-
         self.n_accepted += 1
         prefix = f'{self.n_accepted}'
         output_sentence = f'{self.root_structure(sWM).linearize()}'
@@ -672,6 +748,7 @@ class LanguageData:
         with open(filename) as f:
             lines = f.readlines()
             for line in lines:
+                line = line.strip()
                 if line.strip() and not line.startswith('#') and not line.startswith('END'):
                     line = line.strip()
                     if line.startswith('Numeration='):
@@ -730,7 +807,10 @@ ld = LanguageData('lexicon3_1.txt')             #   Instantiate language data ob
 ld.read_dataset('dataset_template3_1.txt')      #   Name of the dataset file processed by the script, reads the file
 speaker_models = {}
 log_file.write(f'Root lexicon: {ld.root_lexicon}\n')
-for language in ld.languages:
-    speaker_models[language] = SpeakerModel(ld, language=language)
-    log_file.write(f'Speaker Model {language} lexicon: {speaker_models[language].lexicon}\n')
+
+# Create speaker models for languages present in the lexicon
+for L in ld.languages:
+    speaker_models[L] = SpeakerModel(ld, language=L)
+    log_file.write(f'Speaker Model {L} lexicon: {speaker_models[L].lexicon}\n')
+
 run_study(ld, speaker_models)

@@ -1,15 +1,130 @@
 
 #
 # Example dataset for Template3
-#
 
 # --- Finnish ---
 
-# Transitive VP
-Numeration=T,D,koira,v,puri,D,miesta
-koira puri#v#T miesta
+# Baseline tests, intransitive and transitive TPs
+
+	# Intransitive TP
+	Numeration=T,D0,koira,haukkui
+	koira#D0 haukkui#T
+
+	# Transitive TP
+	Numeration=T,D0,koira,v,puri,D0,miesta
+	koira#D0 puri#v#T miesta#D
+
+	# Intransitive CP
+	Numeration=C,T,D0,koira,haukkui
+	C koira#D0 haukkui#T
+
+	# Transitive CP
+	Numeration=C,T,D0,koira,v,puri,D0,miesta
+	C koira#D puri#v#T miesta#D
+
+# Relative clauses, intransitive and transitive (subject, object relativization))
+
+	# Relative clause, intransitive
+	Numeration=koira,C(rel),T,joka,N0,haukkui
+	koira N0#joka haukkui#T
+
+	# Subject relativization, transitive
+	Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta
+	koira N0#joka puri#v#T miesta#D0
+
+	# Object relativization, transitive
+	Numeration=mies,C(rel),T,jota,N0,D0,koira,v,puri
+	mies N0#jota koira#D0 puri#v#T
+	koira N0#jota mies#D0 puri#v#T
+
+# Case permutations/violations
+
+	# Relative clause, intransitive, case violation
+	Numeration=koira,C(rel),T,jota,N0,haukkui
+
+	# Subject relativization, transitive, case violations
+	# PAR-PAR
+	Numeration=koira,C(rel),T,jota,N0,v,puri,D0,miesta
+	# NOM-NOM
+	Numeration=koira,C(rel),T,joka,N0,v,puri,D0,mies
+
+	# Object relativization, transitive
+	# PAR-PAR
+	Numeration=mies,C(rel),T,jota,N0,D0,koiraa,v,puri
+	# NOM-NOM
+	Numeration=mies,C(rel),T,joka,N0,D0,koira,v,puri
+	
+# Two relative pronouns and missing relative pronouns
+	
+	# Two relative pronouns
+	Numeration=koira,C(rel),T,joka,N0,v,puri,jota,N0
+	Numeration=mies,C(rel),T,jota,N0,joka,N0,v,puri
+
+	# No relative pronouns
+	Numeration=mies,C(rel),D0,miesta,D0,koira,v,puri
+	Numeration=koira,C(rel),T,D0,koira,v,puri,D0,miesta
+
+# Additional and missing DP-arguments
+
+	# Additiona DP-argument, object relativization
+	
+		# Additional DP-argument (NOM)
+		#Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koira,v,puri
+		
+		# Additional DP-argument (PAR)
+		#Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koiraa,v,puri
+
+	# Additional DP-argument, subject relativization
+
+		# Additional DP-argument (NOM)
+		#Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,mies
+
+		# Additional DP-argument (PAR)
+		#Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,miesta
+
+	# Missing DP-argument, object relativization
+	
+		Numeration=mies,C(rel),T,jota,N0,v,puri
+
+	# Missing DP-argument, subject relativization
+	
+		Numeration=koira,C(rel),T,joka,N0,v,puri
+
+# Agreement
+
+	# D-N agreement tests
+
+		Numeration=se,koira,C(rel),T,joka,N0,haukkui
+		se koira N0#joka haukkui#T
+		
+		Numeration=ne,koirat,C(rel),T,jotka,N0,haukkui
+		ne koirat N0#jotka haukkui#T
+		
+		Numeration=se,koirat,C(rel),T,joka,N0,haukkui
+		
+		Numeration=ne,koira,C(rel),T,jotka,N0,haukkui
+
+	# Relative pronoun-D agreement tests
+
+		Numeration=se,koira,C(rel),T,joka,N0,haukkui
+		se koira N0#joka haukkui#T
+		
+		Numeration=ne,koirat,C(rel),T,jotka,N0,haukkui
+		ne koirat N0#jotka haukkui#T
+
+		Numeration=se,koira,C(rel),T,jotka,N0,haukkui
+		
+		Numeration=ne,koirat,C(rel),T,joka,N0,haukkui
+
+	# Double agreement violations
+
+		Numeration=se,koirat,C(rel),T,jotka,N0,haukkui
+		
+		Numeration=ne,koira,C(rel),T,joka,N0,haukkui
 
 END
+
+# --- English ---
 
 # 2 Intransitive VP
 
