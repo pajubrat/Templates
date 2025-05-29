@@ -46,12 +46,16 @@ class PhraseStructure:
 # (4) a name for the operation, for logging purposes
 syntactic_operations = [(PhraseStructure.MergePreconditions, PhraseStructure.Merge, 2, 'Merge')]    #   Grammar
 
+steps = 0
+
 def derivational_search_function(sWM):
+    global steps
     if derivation_is_complete(sWM):
         process_final_output(sWM)
     else:
         for Preconditions, OP, n, name in syntactic_operations:
             for SO in itertools.permutations(sWM, n):
+                steps += 1
                 if Preconditions(*SO):
                     new_sWM = {x for x in sWM if x not in set(SO)} | {OP(*SO)}
                     derivational_search_function(new_sWM)
@@ -73,9 +77,16 @@ c = PhraseStructure()
 c.phonological_exponent = 'c'
 d = PhraseStructure()
 d.phonological_exponent = 'd'
+e = PhraseStructure()
+e.phonological_exponent = 'e'
+f = PhraseStructure()
+f.phonological_exponent = 'f'
+g = PhraseStructure()
+g.phonological_exponent = 'g'
 
 # Initial lexical feed (set of primitive constituents from root lexicon) for the derivation
 Numeration = {a, b, c, d}
 
 # Create all derivations from the numeration
 derivational_search_function(Numeration)
+print(steps)

@@ -43,8 +43,11 @@ def print_lst(lst):
 def print_constituent_lst(sWM):
     str = f'{print_ordered_lst([x for x in sWM if not x.adjunct])}'
     if [x for x in sWM if x.adjunct]:
-        str += f' | {print_ordered_lst([x for x in sWM if x.adjunct])}'
+        str += f' | {print_adjunct_lst([x for x in sWM if x.adjunct])}'
     return str
+
+def print_adjunct_lst(lst):
+    return ', '.join(sorted([f'{x}(:{x.mother.head().lexical_category()})' for x in lst], key=str.casefold, reverse=True))
 
 def print_ordered_lst(lst):
     return ', '.join(sorted([f'{x}' for x in lst], key=str.casefold, reverse=True))
@@ -235,7 +238,7 @@ class PhraseStructure:
     def HeadMovement(X, Y):
         """Implementation for head movement"""
         if X.HeadMovementPreconditions(Y):
-            PhraseStructure.logging_report += f'\n\t\t + Head chain by {X}° targeting {Y.head()}°'
+            PhraseStructure.logging_report += f'\n\t+ Head chain by {X}° targeting {Y.head()}°'
             return Y.head().chaincopy().HeadMerge_(X)   # Under [X YP], pick the head Y, copy it and merge with X.
         return X    # If the preconditions are not satisfied, return an unmodified X
 
@@ -267,7 +270,7 @@ class PhraseStructure:
                 X.head().complement() and \
                 X.head().complement().internal_search('OP') and \
                 not X.head().complement().internal_search('OP').elliptic:
-            PhraseStructure.logging_report += f'\n\t\t + Phrasal A-bar chain by {X.head()}° targeting {X.head().complement().internal_search("OP")}'
+            PhraseStructure.logging_report += f'\n\t+ Phrasal A-bar chain by {X.head()}° targeting {X.head().complement().internal_search("OP")}'
             return X.head().complement().internal_search('OP').chaincopy().Merge(X)
         return X
 
@@ -293,21 +296,13 @@ class PhraseStructure:
         (ii-iii) the head of X has a phrasal complement YP;
         (iv) YP contains a suitable element that can be moved.
         """
-        if X.head().EPP() and X.head().complement() and X.head().complement().phrasal() and X.head().complement().goal_for_A_movement():
-            PhraseStructure.logging_report += f'\n\t\t + Phrasal A chain by {X.head()}° targeting {X.head().complement().goal_for_A_movement()}'
-            return X.head().complement().goal_for_A_movement().chaincopy().Merge(X)
+        if X.head().EPP() and X.head().complement() and X.head().complement().phrasal() and X.head().complement().A_goal():
+            PhraseStructure.logging_report += f'\n\t+ Phrasal A chain by {X.head()}° targeting {X.head().complement().A_goal()}'
+            return X.head().complement().A_goal().chaincopy().Merge(X)
         return X
 
-    def referential(X):
-        """Referential phrases are headed by D"""
-        return 'D' in X.head().features
-
-    def goal_for_A_movement(X):
-        """
-        Heuristic search algorithm for the potential targets for A-movement. This should
-        be unified with minimal search.
-        """
-        return next((x for x in [X.left(), X.right()] if x.phrasal() and x.referential()), None)
+    def A_goal(X):
+        return X.internal_search('D')
 
     def HeadMerge_(X, Y):
         """Direct Head Merge creates zero-level objects from two zero-level objects"""
@@ -536,7 +531,7 @@ class PhraseStructure:
         to understand"""
         stri = ''
         # Linearize left adjuncts first
-        stri += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_left()])
+        stri += ''.join([x.linearize() for x in X.adjuncts if x and x.linearizes_left()])
         # Linearize X if it is not elliptic
         if not X.elliptic:
             if X.zero_level():
@@ -545,7 +540,7 @@ class PhraseStructure:
             else:
                 stri += ''.join([x.linearize() for x in X.const])
         # Linearize right adjuncts last
-        stri += ''.join([x.linearize() for x in X.adjuncts if x.linearizes_right()])
+        stri += ''.join([x.linearize() for x in X.adjuncts if x and x.linearizes_right()])
         return stri
 
     def linearize_word(X):
