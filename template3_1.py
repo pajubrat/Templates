@@ -84,7 +84,7 @@ class SpeakerLexicon:
         for trigger_features_str in ld.root_lexical_redundancy_rules.keys():
             trigger_features = set(trigger_features_str.strip().split(' '))
             for lex in self.speaker_lexicon.keys():
-                if trigger_features <= self.speaker_lexicon[lex]:
+                if trigger_features <= self.speaker_lexicon[lex] and '-LRR' not in self.speaker_lexicon[lex]:
                     self.speaker_lexicon[lex] = self.speaker_lexicon[lex] | ld.root_lexical_redundancy_rules[trigger_features_str]
 
     def retrieve(self, name):

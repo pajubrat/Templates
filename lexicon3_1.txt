@@ -43,8 +43,10 @@ jotka	::		D π REL OP NOM PHI:NUM:PL PC:#X +wCOMP:N0 LANG:FI
 jota	::		D π REL OP PAR PHI:NUM:SG PC:#X +wCOMP:N0 LANG:FI
 joita	::		D π REL OP PAR PHI:NUM:PL PC:#X +wCOMP:N0 LANG:FI
 puri	::		V V/TR LANG:FI
-se	::		D PHI:NUM:SG
-ne	::		D PHI:NUM:PL
+se		::		D NOM PHI:NUM:SG
+sita	::		D PAR PHI:NUM:SG
+ne		::		D NOM PHI:NUM:PL
+lahella	::		P
 haukkui	::		V V/INTR LANG:FI
 
 
@@ -56,7 +58,8 @@ C(wh) :: 		C Fin C(wh) PC:#X +wCOMP:T OP WH SCOPE
 C(rel) :: 		C Fin C(rel) REL SCOPE OP α:N λ:R PHON:0
 v :: 			v κ PC:#X +wCOMP:V
 T ::			T Fin
-N0 :: 			N N0
+N0 :: 			N N0 π COMP:--,ø -LRR
+N::				N
 
 #
 # Lexical reducancy rules
