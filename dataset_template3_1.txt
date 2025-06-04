@@ -393,18 +393,18 @@
 		# Additiona DP-argument, object relativization
 		
 			# Additional DP-argument (NOM)
-			#Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koira,v,puri
+			Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koira,v,puri
 			
 			# Additional DP-argument (PAR)
-			#Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koiraa,v,puri
+			Numeration=mies,C(rel),T,jota,N0,D0,koira,D0,koiraa,v,puri
 
 		# Additional DP-argument, subject relativization
 
 			# Additional DP-argument (NOM)
-			#Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,mies
+			Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,mies
 
 			# Additional DP-argument (PAR)
-			#Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,miesta
+			Numeration=koira,C(rel),T,joka,N0,v,puri,D0,miesta,D0,miesta
 
 		# Missing DP-argument, object relativization
 		
