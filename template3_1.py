@@ -1,6 +1,6 @@
 
 # template3_1.py
-# Improved and linguistically more informed/plausible template script for YT lecture series "kielitieteen menetelmiä", lecture 21
+# Improved and linguistically more informed/plausible template script for YT lecture series "kielitieteen menetelmiä", lecture 19
 # https://youtube.com/playlist?list=PL35upitLda1fkGLFrdYEEy5P1LBq74dZ3&si=hz8nCLqfuwXguUv7
 # An analysis of Finnish relative clauses
 
@@ -296,7 +296,10 @@ class PhraseStructure:
         (ii-iii) the head of X has a phrasal complement YP;
         (iv) YP contains a suitable element that can be moved.
         """
-        if X.head().EPP() and X.head().complement() and X.head().complement().phrasal() and X.head().complement().A_goal():
+        if X.head().EPP() and \
+                X.head().complement() and \
+                X.head().complement().phrasal() and \
+                X.head().complement().A_goal():
             PhraseStructure.logging_report += f'\n\t+ Phrasal A chain by {X.head()}° targeting {X.head().complement().A_goal()}'
             return X.head().complement().A_goal().chaincopy().Merge(X)
         return X
@@ -798,12 +801,13 @@ def run_study(ld, speaker_models):
     print(f'\nTotal errors {n_total_errors} after {n_total_steps} calculation steps.\n')
     log_file.write(f'\nTotal errors: {n_total_errors}')
 
+
 ld = LanguageData('lexicon3_1.txt')             #   Instantiate language data object, including root lexicons
 ld.read_dataset('dataset_template3_1.txt')      #   Name of the dataset file processed by the script, reads the file
-speaker_models = {}
 log_file.write(f'Root lexicon: {ld.root_lexicon}\n')
 
 # Create speaker models for languages present in the lexicon
+speaker_models = {}
 for L in ld.languages:
     speaker_models[L] = SpeakerModel(ld, language=L)
     log_file.write(f'Speaker Model {L} lexicon: {speaker_models[L].lexicon}\n')

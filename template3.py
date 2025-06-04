@@ -1,6 +1,6 @@
 
 # template3.py
-# Template script for YT lecture series "kielitieteen menetelmiä", lectures 21
+# Template script for YT lecture series "kielitieteen menetelmiä", lectures 19
 # https://youtube.com/playlist?list=PL35upitLda1fkGLFrdYEEy5P1LBq74dZ3&si=hz8nCLqfuwXguUv7
 # An analysis of Finnish relative clauses
 
