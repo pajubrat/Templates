@@ -22,7 +22,7 @@ which ::		D WH OP LANG:EN
 which* :: 		D REL OP PC:#X +wCOMP:N0 LANG:EN
 man :: 			N LANG:EN
 angry :: 		A α:N LANG:EN
-frequently :: 		Adv LANG:EN
+frequently :: 	Adv LANG:EN
 city :: 		N LANG:EN
 from :: 		P LANG:EN
 in :: 			P α:V LANG:EN
@@ -80,7 +80,6 @@ V/TR		=>		COMP:D
 Fin			=>		κ
 
 T LANG:EN	=> 		COMP:V SPEC:D EPP PC:#X +wCOMP:V
-
 T LANG:FI		=>  	COMP:V SPEC:D EPP PC:#X +wCOMP:V
 PAR LANG:FI		=>		κ:v,P
 NOM LANG:FI		=>		κ:Fin,ø
