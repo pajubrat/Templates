@@ -2,15 +2,20 @@
 # template3_2.py
 # Python script for paper Brattico, P. (2025). Finnish relative clause and the derivational search function.
 
-import itertools
 import sys
 import copy
+import itertools
 major_lexical_categories = ['C', 'N', 'v', 'V', 'T/inf', 'A', 'D', 'Dem','Adv', 'T', 'P', 'a', 'b', 'c', 'd']
 
 log_file = open('log3_2.txt', 'w', encoding='utf-8')
 
+
 # Auxiliary functions used during certain processing steps
 def sWMcopy(sWM, SO):
+    """
+    This function copies syntactic objects in sWM and SO
+    and updates internal links (adjuncts, chains, copy-links)
+    """
     sWM2 = [x.copy() for x in sWM if x not in set(SO)]
     SO2 = [x.copy() for x in SO]
     # Updates internal links
@@ -19,6 +24,9 @@ def sWMcopy(sWM, SO):
     return set(sWM2), tuple(SO2)
 
 def update_links(X):
+    """
+    Updates internal links inside syntactic object X
+    """
     if X.adjunct:
         X.mother = X.mother.isomapping
     if X.adjuncts:
@@ -29,14 +37,17 @@ def update_links(X):
         update_links(X.left())
         update_links(X.right())
 
+
 def tset(X):
     if isinstance(X, set):
         return X
     else:
         return {X}
 
+
 def print_lst(lst):
     return ', '.join([f'{x}' for x in lst])
+
 
 def print_constituent_lst(sWM):
     str = f'{print_ordered_lst([x for x in sWM if not x.adjunct])}'
@@ -44,8 +55,10 @@ def print_constituent_lst(sWM):
         str += f' | {print_adjunct_lst([x for x in sWM if x.adjunct])}'
     return str
 
+
 def print_adjunct_lst(lst):
     return ', '.join(sorted([f'{x}(:{x.mother.head().lexical_category()})' for x in lst], key=str.casefold, reverse=True))
+
 
 def print_ordered_lst(lst):
     return ', '.join(sorted([f'{x}' for x in lst], key=str.casefold, reverse=True))
@@ -158,14 +171,10 @@ class PhraseStructure:
         return X.left() and X.right()
 
     def scan_features(X, fset):
-        if fset <= X.features:
-            return True
-        if X.left():
-            return X.left().scan_features(fset)
-        if X.right():
-            return X.right().scan_features(fset)
+        return fset <= X.features or (X.phrasal() and (X.left().scan_features(fset) or X.right().scan_features(fset)))
 
     def is_adjunct(X):
+        """X is an adjunct iff X has mother Y but is not constituent of Y"""
         return X.mother and X not in X.mother.const
 
     def copy(X):
@@ -360,42 +369,28 @@ class PhraseStructure:
                         return x
             X = X.mother
 
-    def internal_search(X, feature):
-        """One implementation for minial search"""
+    def internal_search(X, f):
         while X:
-            if X.zero_level():                          # [X YP], search YP
-                X = X.complement()
-            else:
-                for c in X.const:                       # [_LP XP Y(P)], search the constituent that
-                    if feature in c.head().features:    # provides the label L.
-                        return c
-                    if c.head() == X.head():
-                        X = c
+            for c in X.const:
+                if c and f in c.head().features:
+                    return c
+            X = X.right()
+
+    def head(X):
+        return next((x for x in (X,) + X.const if x and x.zero_level()), X.phrasal() and X.right().head())
 
     def sister(X):
-        """Sisterhood"""
         if X.mother:
             return next((const for const in X.mother.const if const != X), None)
 
     def complement(X):
-        """Complement is a right sister of a zero-level object"""
         if X.zero_level() and X.isLeft():
             return X.sister()
-
-    # Calculates the head of any phrase structure object X ("labelling algorithm")
-    # Returns the most prominent zero-level category inside X
-    def head(X):
-        for x in (X,) + X.const:
-            if x and x.zero_level():
-                return x
-        return x.head()
 
     def subcategorization(X):
         """
         Recursive interface test for complement and specifier subcategorization; an example
         of how to test subcategorization as an output well-formedness condition.
-
-        We test zero-level objects for complement and specifier conditions
         """
         if X.zero_level():
             return X.complement_subcategorization(X.complement()) and \
@@ -474,15 +469,7 @@ class PhraseStructure:
 
     def Agree(X, Y, fclass):
         """Verifies that X and Y do not contain type-value mismatches in class [fclass]"""
-        # Consider features from class [fclass]
-        Xfeatures = {f for f in X.features if f.startswith(fclass)}
-        Yfeatures = {f for f in Y.features if f.startswith(fclass)}
-        for Xf in Xfeatures:
-            for Yf in Yfeatures:
-                # Detect mismatch
-                if Xf.split(':')[1] == Yf.split(':')[1] and Xf.split(':')[2] != Yf.split(':')[2]:
-                    return False
-        return True
+        return next((False for pair in itertools.product({f for f in X.features if f.startswith(fclass)}, {f for f in Y.features if f.startswith(fclass)}) if pair[0].split(':')[1] == pair[1].split(':')[1] and pair[0].split(':')[2] != pair[1].split(':')[2]), True)
 
     def case_checking(X):
         # Only base-positions are checked for case configurations
@@ -742,7 +729,7 @@ class LanguageData:
             lines = f.readlines()
             for line in lines:
                 line = line.strip()
-                if line.strip() and not line.startswith('#') and not line.startswith('END'):
+                if line.strip() and not line.startswith('#') and not line.startswith("\'") and not line.startswith('END'):
                     line = line.strip()
                     if line.startswith('Numeration='):
                         if numeration:
@@ -777,9 +764,9 @@ class LanguageData:
 # Run one whole study as defined by the dataset file, itself containing
 # numeration-target sentences blocks
 def run_study(ld, speaker_models):
-    n_dataset = 0       #   Number of datasets in the experiment (counter)
-    n_total_errors = 0  #   Count the number of errors in the whole experiment (counter)
-    n_total_steps = 0   #   Number of calculations steps in the whole experiment
+    n_dataset = 0           #   Number of datasets in the experiment (counter)
+    n_total_errors = 0      #   Count the number of errors in the whole experiment (counter)
+    n_total_steps = 0       #   Number of calculations steps in the whole experiment
     for numeration, gold_standard_dataset in ld.study_dataset:
         n_dataset += 1
         L = ld.guess_language(numeration)
@@ -797,7 +784,7 @@ def run_study(ld, speaker_models):
     log_file.write(f'\nTotal errors: {n_total_errors}')
 
 ld = LanguageData('lexicon3_1.txt')             #   Instantiate language data object, including root lexicons
-ld.read_dataset('dataset_template3_1.txt')      #   Name of the dataset file processed by the script, reads the file
+ld.read_dataset('dataset_template3_2.txt')      #   Name of the dataset file processed by the script, reads the file
 speaker_models = {}
 log_file.write(f'Root lexicon: {ld.root_lexicon}\n')
 
