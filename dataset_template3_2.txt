@@ -234,6 +234,8 @@
 		Numeration=the,dog,the,dog,which*,N0,C(rel),T,bark
 		Numeration=the,dog,which*,N0,which*,N0,C(rel),T,bark
 
+# 657.419.088 implicit English test expressions
+
 # --- Finnish ---------------------------------------------------
 	
 # Baseline tests, intransitive and transitive TPs
@@ -413,7 +415,8 @@
 		Numeration=koira,C(rel),T,D0,koira,v,puri,D0,miesta
 		'dog.nom,C(rel),T,D0,dog.nom,v,bite.3sg.pst,D0,man.par'
 
-	# Additional and missing DP-arguments
+	# Additional and missing DP-arguments 
+	# Note: These numerations have 11 items, very long calculations
 
 		# Additiona DP-argument, object relativization
 		
